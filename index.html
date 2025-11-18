@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>HabitMaster — Mobile (Firebase)</title>
+<meta name="theme-color" content="#071428" />
+<link rel="manifest" href="manifest.json" />
+<style>
+/* ---------- Minimalny wygląd (skondensowany) ---------- */
+:root{
+  --bg:#071022; --muted:#9bb0cf; --glass:rgba(255,255,255,0.03);
+  --accent1:#7c3aed; --accent2:#06b6d4; --radius:14px;
+  --shadow:0 12px 30px rgba(2,6,23,0.6);
+  --fast:180ms; --mid:320ms; --slow:520ms;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%, #041428 100%);color:#eaf3ff;-webkit-font-smoothing:antialiased}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.02);position:sticky;top:0;z-index:40}
+.header .left{display:flex;align-items:center;gap:12px}
+.today-date{font-weight:700}
+.user-bubble{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:13px}
+.sign-btn{background:none;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
+.weekbar{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px);box-shadow:var(--shadow);position:sticky;top:56px;z-index:30}
+.week-arrow{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,0.03);cursor:pointer}
+.week-strip{display:flex;flex:1;gap:8px}
+.week-col{flex:1;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;padding:8px;border-radius:10px;transition:all var(--mid)}
+.week-col .num{display:block;font-size:18px;font-weight:700;color:#fff}
+.week-col.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;transform:translateY(-4px);box-shadow:0 8px 22px rgba(12,30,100,0.45)}
+.app{padding:16px;padding-bottom:140px}
+.habit-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);box-shadow:0 6px 20px rgba(0,0,0,0.5);margin-bottom:12px;transition:transform var(--mid),opacity var(--mid),filter var(--mid);touch-action:pan-y;overflow:hidden}
+.habit-card.done{opacity:.5;filter:grayscale(.2);text-decoration:line-through}
+.habit-row{display:flex;align-items:center;gap:12px;width:100%}
+.check{width:36px;height:36px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:all var(--mid)}
+.check.filled{background:currentColor;box-shadow:0 10px 24px rgba(0,0,0,0.45);transform:scale(1.18)}
+.icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(255,255,255,0.02)}
+.meta{flex:1;min-width:0;display:flex;flex-direction:column}
+.title{font-weight:700;font-size:15px}
+.time{font-size:13px;color:var(--muted)}
+.btn-del{border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted);padding:6px 10px;border-radius:10px;font-size:13px;cursor:pointer}
+.habit-extra{font-size:13px;color:#b7cde6;padding:8px 6px 0 6px;display:none}
+.habit-card.expanded .habit-extra{display:block}
+.fab{position:fixed;right:18px;bottom:96px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,var(--accent1),var(--accent2));border:none;color:white;box-shadow:var(--shadow);cursor:pointer}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+.modal{width:100%;max-width:540px;background:#071428;border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.icon-grid,.color-grid{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.icon-choice{width:48px;height:48px;border-radius:12px;background:#071a2b;display:grid;place-items:center;font-size:22px;cursor:pointer;transition:transform .16s}
+.icon-choice.active{outline:3px solid rgba(255,255,255,0.06);transform:scale(1.12)}
+.color-choice{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s}
+.color-choice.active{box-shadow:0 6px 18px rgba(0,0,0,0.5);transform:translateY(-4px)}
+.confirm-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:70}
+.confirm-box{background:#071428;border-radius:14px;padding:18px;box-shadow:var(--shadow);width:92%;max-width:420px;color:white;text-align:center}
+.confirm-title{font-weight:700;margin-bottom:6px}
+.confirm-text{color:#b7cde6;font-size:14px}
+.confirm-btns{display:flex;gap:12px;margin-top:16px}
+.cbtn{flex:1;padding:12px;border-radius:12px;font-weight:700;border:none;cursor:pointer}
+.cbtn-cancel{background:rgba(255,255,255,0.04);color:#eaf3ff}
+.cbtn-only{background:rgba(255,255,255,0.06);color:#eaf3ff}
+.cbtn-all{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
+.login-panel{padding:18px;display:flex;flex-direction:column;gap:8px}
+.small{font-size:13px;padding:8px 10px;border-radius:10px}
+.email-input{padding:10px;border-radius:10px;border:none;background:#0b1220;color:white}
+.link-like{background:none;border:0;color:var(--accent2);cursor:pointer}
+.status-row{display:flex;gap:8px;align-items:center}
+.flash-done{animation:flashDone var(--slow) ease both}
+@keyframes flashDone{0%{box-shadow:0 0 0 rgba(0,0,0,0);transform:translateY(0)}30%{transform:translateY(-6px) scale(1.02)}60%{transform:translateY(0) scale(1)}100%{box-shadow:0 18px 40px rgba(0,0,0,0.45)}}
+.small-ico{font-size:14px;margin-right:6px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="left">
+    <div class="today-date" id="todayDate">...</div>
+  </div>
+  <div class="status-row" id="authRow">
+    <!-- auth UI injected -->
+    <button id="btnSignIn" class="sign-btn">Zaloguj</button>
+  </div>
+</div>
+
+<!-- WEEK BAR -->
+<div class="weekbar">
+  <div class="week-arrow" id="prevWeek">◀</div>
+  <div class="week-strip" id="weekBar"></div>
+  <div class="week-arrow" id="nextWeek">▶</div>
+</div>
+
+<!-- APP -->
+<div class="app" id="dayView">
+  <div id="habitsList"></div>
+  <div id="emptyState" style="opacity:.6;text-align:center;margin-top:20px">Brak nawyków</div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="openAdd" title="Dodaj nawyk">＋</button>
+
+<!-- ADD MODAL -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" role="dialog">
+    <h3>Dodaj nawyk</h3>
+    <label>Nazwa</label>
+    <input id="habitName" placeholder="Np. Ćwiczenia" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0" />
+    <label>Opis (opcjonalnie)</label>
+    <textarea id="habitDesc" placeholder="Opis..." style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0;height:70px"></textarea>
+
+    <label>Ikona</label>
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <label>Kolor</label>
+    <div class="color-grid" id="colorGrid"></div>
+
+    <label>Powtarzanie</label>
+    <select id="recurrence" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0">
+      <option value="once">Tylko dziś</option>
+      <option value="daily">Codziennie</option>
+      <option value="repeat">Powtarzające się</option>
+    </select>
+
+    <div id="weekSelect" style="display:none" class="icon-grid"></div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <div style="flex:1"><label>Start</label><input type="time" id="startTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" /></div>
+      <div style="flex:1"><label>Koniec</label><input type="time" id="endTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" /></div>
+    </div>
+
+    <button id="saveAdd" style="margin-top:12px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white;width:100%;font-size:16px;cursor:pointer">Dodaj nawyk</button>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE (custom) -->
+<div class="confirm-backdrop" id="confirmBackdrop">
+  <div class="confirm-box" id="confirmBox" role="dialog" aria-modal="true">
+    <div class="confirm-title" id="confirmTitle">Usuń nawyk?</div>
+    <div class="confirm-text" id="confirmText">Co zrobić z tym nawykiem?</div>
+    <div class="confirm-btns" id="confirmBtns">
+      <!-- buttons injected dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-backdrop" id="authBackdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="login-panel">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="googleSign" class="small">Zaloguj przez Google</button>
+        <button id="showEmail" class="small">Email</button>
+      </div>
+
+      <div id="emailForm" style="display:none;flex-direction:column;gap:8px">
+        <input id="emailInput" class="email-input" placeholder="Email" />
+        <input id="passInput" class="email-input" placeholder="Hasło" type="password" />
+        <div style="display:flex;gap:8px">
+          <button id="emailSignUp" class="small">Zarejestruj</button>
+          <button id="emailSignIn" class="small">Zaloguj</button>
+        </div>
+      </div>
+
+      <div style="font-size:13px;color:#9fb2d1;margin-top:6px">Zaloguj się aby synchronizować nawyki między urządzeniami.</div>
+      <button id="authClose" class="link-like">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK (v9 modular via CDN) -->
+<script type="module">
+/* =========================
+   FIREBASE + APP LOGIKA
+   v9 modułowy (CDN)
+   ========================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, query, where, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+/* ----- WSTAW TUTAJ SWOJE KONFIGI FIREBASE ----- */
+/* 1) Utwórz projekt na console.firebase.google.com
+   2) Firebase => Project settings => SDK config -> use web v9
+   3) Wklej poniżej swoje wartości */
+const firebaseConfig = {
+  apiKey: "REPLACE_API_KEY",
+  authDomain: "REPLACE_AUTH_DOMAIN",
+  projectId: "REPLACE_PROJECT_ID",
+  storageBucket: "REPLACE_STORAGE_BUCKET",
+  messagingSenderId: "REPLACE_MESSAGING_SENDER_ID",
+  appId: "REPLACE_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
+
+/* ================== STAN APLIKACJI ================== */
+const DAY_NAMES = ['pon','wt','śr','czw','pt','sob','nd'];
+let today = new Date(); today.setHours(0,0,0,0);
+let currentDate = new Date(); currentDate.setHours(0,0,0,0);
+let weekOffset = 0;
+let user = null; // firebase user object
+
+/* UI references */
+const todayEl = document.getElementById('todayDate');
+const weekBar = document.getElementById('weekBar');
+const habitsList = document.getElementById('habitsList');
+const emptyState = document.getElementById('emptyState');
+const openAdd = document.getElementById('openAdd');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const iconGrid = document.getElementById('iconGrid');
+const colorGrid = document.getElementById('colorGrid');
+const weekSelect = document.getElementById('weekSelect');
+const authRow = document.getElementById('authRow');
+const authBackdrop = document.getElementById('authBackdrop');
+const confirmBackdrop = document.getElementById('confirmBackdrop');
+const confirmBtns = document.getElementById('confirmBtns');
+
+/* local cache (fallback and optimistic UI) */
+let habitsCache = []; // local list (mirrors Firestore for current user)
+let completionsCache = {}; // { date: {habitId: true} }
+
+/* handy helpers */
+function iso(d){ return d.toISOString().slice(0,10); }
+function dayIdxFromDate(d){ return (d.getDay()+6)%7; } // Mon=0..Sun=6
+
+/* ---------------- RENDER TODAY DATE ---------------- */
+function renderTodayDate(){
+  const opts = { day:'numeric', month:'long', year:'numeric' };
+  todayEl.textContent = today.toLocaleDateString('pl-PL', opts);
+}
+
+/* ---------------- WEEK BAR ---------------- */
+function weekStartFromOffset(){
+  const base = new Date(currentDate);
+  const day = base.getDay();
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - ((day+6)%7) + weekOffset*7);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+function renderWeekBar(){
+  weekBar.innerHTML = '';
+  const start = weekStartFromOffset();
+  for(let i=0;i<7;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    const col = document.createElement('div');
+    col.className = 'week-col';
+    col.innerHTML = `<small>${DAY_NAMES[i]}</small><span class='num'>${d.getDate()}</span>`;
+    if(iso(d) === iso(currentDate)) col.classList.add('active');
+    col.onclick = ()=>{ currentDate = new Date(d); renderAll(); };
+    weekBar.appendChild(col);
+  }
+}
+document.getElementById('prevWeek').onclick = ()=>{ weekOffset--; renderAll(); };
+document.getElementById('nextWeek').onclick = ()=>{ weekOffset++; renderAll(); };
+
+/* ----------------- ICONS & COLORS ----------------- */
+const ICONS = ['🏃','📚','🧘','💪','🛌','☕','🍎','🧹','🚰','🎧','🎯','🎨','🧩','🚴','🏊','🏋️‍♂️','🖥️','✍️','📅','🎵'];
+const COLORS = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#06b6d4','#fb7185','#10b981','#f97316','#8b5cf6','#0ea5a4','#f43f5e'];
+
+let selectedIcon = ICONS[0];
+let selectedColor = COLORS[0];
+let selectedDays = [];
+
+/* populate grids */
+function initPickers(){
+  iconGrid.innerHTML=''; colorGrid.innerHTML='';
+  ICONS.forEach((ic,idx)=>{
+    const el = document.createElement('div'); el.className='icon-choice'; el.textContent = ic;
+    el.onclick = ()=>{ selectedIcon = ic; [...iconGrid.children].forEach(x=>x.classList.remove('active')); el.classList.add('active'); };
+    iconGrid.appendChild(el);
+    if(idx===0) el.classList.add('active');
+  });
+  COLORS.forEach((c,idx)=>{
+    const el = document.createElement('div'); el.className='color-choice'; el.style.background=c;
+    el.onclick = ()=>{ selectedColor = c; [...colorGrid.children].forEach(x=>x.classList.remove('active')); el.classList.add('active'); };
+    colorGrid.appendChild(el);
+    if(idx===0) el.classList.add('active');
+  });
+  // week select
+  weekSelect.innerHTML='';
+  DAY_NAMES.forEach((d,i)=>{
+    const el = document.createElement('div'); el.className='icon-choice'; el.style.width='44px'; el.style.height='44px'; el.textContent=d;
+    el.onclick = ()=>{ if(selectedDays.includes(i)) selectedDays = selectedDays.filter(x=>x!==i); else selectedDays.push(i); el.classList.toggle('active'); };
+    weekSelect.appendChild(el);
+  });
+}
+initPickers();
+
+/* ---------------- AUTH UI ---------------- */
+function renderAuthUI(){
+  authRow.innerHTML = '';
+  if(user){
+    const span = document.createElement('div'); span.className='user-bubble'; span.textContent = user.email || user.displayName || 'User';
+    const btn = document.createElement('button'); btn.className='sign-btn'; btn.textContent='Wyloguj';
+    btn.onclick = ()=> signOut(auth);
+    authRow.append(span, btn);
+  } else {
+    const btn = document.createElement('button'); btn.id='btnSignInLocal'; btn.className='sign-btn'; btn.textContent='Zaloguj';
+    btn.onclick = ()=> authBackdrop.style.display='flex';
+    authRow.append(btn);
+  }
+}
+
+/* ---------------- FIRESTORE SYNC ----------------
+   habits: collection "habits" with documents:
+   { id, userId, name, desc, icon, color, start, end, recurrence, days[], exclusions[] }
+   completions: collection "completions" per user – doc id = userId_date, content { userId, date, map: { habitId: true } }
+-------------------------------------------------*/
+let unsubHab = null, unsubComp = null;
+
+function startRealtimeSync(uid){
+  // unsubscribe previous
+  if(unsubHab) unsubHab();
+  if(unsubComp) unsubComp();
+
+  // habits where userId == uid
+  const habitsCol = collection(db, 'habits');
+  const q = query(habitsCol, where('userId','==',uid));
+  unsubHab = onSnapshot(q, snap=>{
+    habitsCache = [];
+    snap.forEach(docSnap=>{
+      const data = docSnap.data(); data.id = docSnap.id;
+      habitsCache.push(data);
+    });
+    renderDay();
+  });
+
+  // completions: listen to all docs where userId == uid
+  const compCol = collection(db, 'completions');
+  const q2 = query(compCol, where('userId','==',uid));
+  unsubComp = onSnapshot(q2, snap=>{
+    completionsCache = {};
+    snap.forEach(ds=>{
+      const d = ds.data();
+      if(d && d.date && d.map) completionsCache[d.date] = d.map;
+    });
+    renderDay();
+  });
+}
+
+/* helper to write habit to Firestore */
+async function addHabitToServer(h){
+  if(!user) {
+    // fallback to local cache
+    h._offline = true;
+    habitsCache.push(h);
+    renderDay();
+    return;
+  }
+  const docRef = await addDoc(collection(db,'habits'), {...h, userId:user.uid, createdAt: serverTimestamp()});
+  // Firestore will push via onSnapshot
+}
+
+/* helper to set deletion/exclusion on server */
+async function addExclusionOnServer(habitId, dateIso){
+  if(!user) {
+    // local: find habit and add exclusion
+    const h = habitsCache.find(x=>x.id===habitId) || habits.find(x=>x.id===habitId);
+    if(h){ h.exclusions = h.exclusions || []; if(!h.exclusions.includes(dateIso)) h.exclusions.push(dateIso); }
+    renderDay();
+    return;
+  }
+  // update doc
+  const hDoc = doc(db,'habits', habitId);
+  await updateDoc(hDoc, { exclusions: ( (await hDoc.get?.()) , undefined ) }).catch(()=>{}); // fallback, we'll do simpler:
+  // get current doc data then update exclusions array (we can't get doc directly without getDoc import; we'll do update merging using array union would need arrayUnion import)
+  // For simplicity: read local cache and write
+  const hLocal = habitsCache.find(x=>x.id===habitId);
+  if(hLocal){
+    hLocal.exclusions = hLocal.exclusions || [];
+    if(!hLocal.exclusions.includes(dateIso)) hLocal.exclusions.push(dateIso);
+    const payload = { exclusions: hLocal.exclusions };
+    await updateDoc(doc(db,'habits',habitId), payload);
+  }
+}
+
+/* helper to delete habit on server */
+async function deleteHabitOnServer(habitId){
+  if(!user){
+    habitsCache = habitsCache.filter(x=>x.id!==habitId);
+    renderDay(); return;
+  }
+  await deleteDoc(doc(db,'habits',habitId));
+}
+
+/* helper to toggle completion for a habit for a date (writes to completions collection) */
+async function toggleCompletionServer(habitId, dateIso){
+  if(!user){
+    completionsCache[dateIso] = completionsCache[dateIso] || {};
+    completionsCache[dateIso][habitId] = !completionsCache[dateIso][habitId];
+    renderDay(); return;
+  }
+  const docId = `${user.uid}_${dateIso}`;
+  const docRef = doc(db,'completions', docId);
+  // we will do merge set
+  const existing = completionsCache[dateIso] || {};
+  existing[habitId] = !existing[habitId];
+  await setDoc(docRef, { userId:user.uid, date:dateIso, map: existing }, { merge:true });
+}
+
+/* ---------------- RENDER DAY (uses habitsCache & completionsCache) ---------------- */
+function matches(h, d){
+  if(!h) return false;
+  if(h.recurrence === 'once') return h.date === iso(d);
+  if(h.recurrence === 'daily') return !(Array.isArray(h.exclusions) && h.exclusions.includes(iso(d)));
+  if(h.recurrence === 'repeat'){
+    const idx = dayIdxFromDate(d);
+    const inDays = Array.isArray(h.days) && h.days.includes(idx);
+    const excluded = Array.isArray(h.exclusions) && h.exclusions.includes(iso(d));
+    return inDays && !excluded;
+  }
+  return false;
+}
+function renderDay(){
+  // render using server cache if available
+  const list = habitsList;
+  list.innerHTML = '';
+  const items = (habitsCache || []).filter(h => matches(h,currentDate)).sort((a,b)=> (a.start||'') .localeCompare(b.start||'') );
+  emptyState.style.display = items.length ? 'none' : 'block';
+  items.forEach(h=>{
+    const card = document.createElement('div'); card.className='habit-card';
+    if(completionsCache[iso(currentDate)]?.[h.id]) card.classList.add('done');
+    const row = document.createElement('div'); row.className='habit-row';
+    const check = document.createElement('div'); check.className='check'; check.style.color = h.color || selectedColor;
+    if(completionsCache[iso(currentDate)]?.[h.id]) check.classList.add('filled');
+    check.onclick = (e)=>{ e.stopPropagation(); toggleDone(h.id); animateDoneVisual(card,check,h.id); };
+    enableSwipe(row, ()=>{ toggleDone(h.id); animateDoneVisual(card,check,h.id); });
+
+    const icon = document.createElement('div'); icon.className='icon'; icon.textContent = h.icon || '🏃';
+    icon.style.background = (h.color || selectedColor) + '22';
+
+    const meta = document.createElement('div'); meta.className='meta';
+    meta.innerHTML = `<div class='title'>${h.name}</div><div class='time'>${h.start? h.start: ''}${h.end ? ' — '+h.end : ''}</div>`;
+    if(completionsCache[iso(currentDate)]?.[h.id]) meta.classList.add('done');
+
+    const del = document.createElement('button'); del.className='btn-del'; del.textContent='Usuń';
+    del.onclick = (e)=>{ e.stopPropagation(); showDeleteModal(h, card); };
+
+    row.append(check, icon, meta, del);
+    card.appendChild(row);
+
+    if(h.desc){ const ex = document.createElement('div'); ex.className='habit-extra'; ex.textContent = h.desc; card.appendChild(ex); }
+
+    card.addEventListener('click', (e)=>{
+      const t=e.target; if(t===check || t===del) return;
+      card.classList.toggle('expanded');
+    });
+
+    list.appendChild(card);
+  });
+}
+
+/* ---------------- ANIMATIONS & UX ---------------- */
+function toggleDone(habitId){
+  const dateIso = iso(currentDate);
+  // optimistic
+  completionsCache[dateIso] = completionsCache[dateIso] || {};
+  completionsCache[dateIso][habitId] = !completionsCache[dateIso][habitId];
+  renderDay();
+  // write to server
+  toggleCompletionServer(habitId, dateIso).catch(()=>{ /* ignore for brevity */ });
+}
+function animateDoneVisual(card, check, id){
+  const filled = !!completionsCache[iso(currentDate)]?.[id];
+  if(filled){
+    check.classList.add('filled'); card.classList.add('flash-done');
+    setTimeout(()=>card.classList.remove('flash-done'),900);
+    try{ check.animate([{transform:'scale(1)'},{transform:'scale(1.26)'},{transform:'scale(1)'}],{duration:520,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){}
+  } else { check.classList.remove('filled'); card.classList.remove('flash-done'); }
+}
+function enableSwipe(el, action){
+  let sx=0,cx=0,drag=false;
+  el.addEventListener('touchstart', e=>{ drag=true; sx=e.touches[0].clientX; el.style.transition='none'; });
+  el.addEventListener('touchmove', e=>{ if(!drag) return; cx = e.touches[0].clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; });
+  el.addEventListener('touchend', ()=>{ el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); drag=false; cx=0; });
+  // desktop fallback
+  let md=false;
+  el.addEventListener('mousedown', e=>{ md=true; sx=e.clientX; el.style.transition='none'; });
+  window.addEventListener('mousemove', e=>{ if(!md) return; cx = e.clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; });
+  window.addEventListener('mouseup', ()=>{ if(!md) return; md=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); cx=0; });
+}
+
+/* ---------------- ADD HABIT ---------------- */
+document.getElementById('openAdd').onclick = ()=>{ modalBackdrop.style.display='flex'; };
+
+modalBackdrop.onclick = (e)=>{ if(e.target===modalBackdrop) modalBackdrop.style.display='none'; };
+
+document.getElementById('recurrence').onchange = (e)=>{
+  weekSelect.style.display = e.target.value==='repeat' ? 'flex' : 'none';
+  if(e.target.value==='daily'){ selectedDays = [0,1,2,3,4,5,6]; [...weekSelect.children].forEach(n=>n.classList.add('active')); }
+  if(e.target.value!=='repeat'){ selectedDays=[]; [...weekSelect.children].forEach(n=>n.classList.remove('active')); }
+};
+
+document.getElementById('saveAdd').onclick = async ()=>{
+  const name = document.getElementById('habitName').value.trim() || 'Nawyk';
+  const desc = document.getElementById('habitDesc').value.trim() || '';
+  const start = document.getElementById('startTime').value || '';
+  const end = document.getElementById('endTime').value || '';
+  const rec = document.getElementById('recurrence').value || 'once';
+  const h = { name, desc, icon: selectedIcon, color: selectedColor, start, end, recurrence: rec, exclusions: [] };
+
+  if(rec==='once') h.date = iso(currentDate);
+  if(rec==='repeat') h.days = [...selectedDays];
+  if(rec==='daily') h.days = [0,1,2,3,4,5,6];
+
+  // temp id for offline and UI
+  h.id = (Date.now()).toString(36);
+  habitsCache.push(h);
+  renderDay();
+  modalBackdrop.style.display='none';
+
+  // write to server
+  if(user){
+    // send to firestore
+    try{
+      await addDoc(collection(db,'habits'), {...h, userId:user.uid, createdAt: serverTimestamp()});
+    }catch(err){
+      console.error('Add habit error', err);
+    }
+  } else {
+    // save to localStorage as fallback
+    const local = JSON.parse(localStorage.getItem('hm_offline')||'[]'); local.push(h); localStorage.setItem('hm_offline', JSON.stringify(local));
+  }
+  // clear form
+  document.getElementById('habitName').value=''; document.getElementById('habitDesc').value=''; selectedDays=[]; [...weekSelect.children].forEach(n=>n.classList.remove('active'));
+};
+
+/* ---------------- DELETE MODAL (dynamic buttons & icons) ---------------- */
+let deleteContext = null;
+function showDeleteModal(habit, element){
+  deleteContext = {habit, element};
+  document.getElementById('confirmTitle').textContent = `Usuń nawyk "${habit.name}"?`;
+  const text = (habit.recurrence==='once') ? 'Czy na pewno usunąć ten nawyk?' : 'Usuń tylko dziś (wyjątek) czy na stałe?';
+  document.getElementById('confirmText').textContent = text;
+
+  // build buttons
+  confirmBtns.innerHTML = '';
+  // Cancel
+  const btnCancel = document.createElement('button'); btnCancel.className='cbtn cbtn-cancel'; btnCancel.innerHTML = '<span class="small-ico">✖</span>Anuluj';
+  btnCancel.onclick = ()=>{ confirmBackdrop.style.display='none'; deleteContext=null; };
+  confirmBtns.appendChild(btnCancel);
+
+  if(habit.recurrence === 'once'){
+    // only delete
+    const btnDel = document.createElement('button'); btnDel.className='cbtn cbtn-all'; btnDel.innerHTML = '<span class="small-ico">🗑️</span>Usuń';
+    btnDel.onclick = async ()=>{
+      // delete
+      confirmBackdrop.style.display='none';
+      if(user){
+        await deleteDoc(doc(db,'habits', habit.id)).catch(()=>{});
+      } else {
+        // local remove
+        habitsCache = habitsCache.filter(h=>h.id!==habit.id);
+      }
+      renderDay();
+      deleteContext=null;
+    };
+    confirmBtns.appendChild(btnDel);
+  } else {
+    // show: only today & all
+    const btnOnly = document.createElement('button'); btnOnly.className='cbtn cbtn-only'; btnOnly.innerHTML = '<span class="small-ico">🗓️</span>Tylko dziś';
+    btnOnly.onclick = async ()=>{
+      confirmBackdrop.style.display='none';
+      const dayIso = iso(currentDate);
+      if(user){
+        // update doc exclusions
+        const hDocRef = doc(db,'habits', habit.id);
+        // local update
+        const idx = habitsCache.findIndex(x=>x.id===habit.id);
+        if(idx>=0){ habitsCache[idx].exclusions = habitsCache[idx].exclusions||[]; if(!habitsCache[idx].exclusions.includes(dayIso)) habitsCache[idx].exclusions.push(dayIso); }
+        await updateDoc(hDocRef, { exclusions: habitsCache[idx].exclusions }).catch(()=>{});
+      } else {
+        habit.exclusions = habit.exclusions||[]; if(!habit.exclusions.includes(dayIso)) habit.exclusions.push(dayIso);
+      }
+      renderDay();
+      deleteContext=null;
+    };
+    const btnAll = document.createElement('button'); btnAll.className='cbtn cbtn-all'; btnAll.innerHTML = '<span class="small-ico">🗑️</span>Usuń na stałe';
+    btnAll.onclick = async ()=>{
+      confirmBackdrop.style.display='none';
+      if(user){
+        await deleteDoc(doc(db,'habits', habit.id)).catch(()=>{});
+      } else {
+        habitsCache = habitsCache.filter(h=>h.id!==habit.id);
+      }
+      renderDay();
+      deleteContext=null;
+    };
+    confirmBtns.appendChild(btnOnly);
+    confirmBtns.appendChild(btnAll);
+  }
+
+  confirmBackdrop.style.display='flex';
+}
+
+/* ---------------- AUTH (Google + Email) ---------------- */
+const btnSignIn = document.getElementById('btnSignIn');
+btnSignIn.onclick = ()=> authBackdrop.style.display='flex';
+document.getElementById('authClose').onclick = ()=> authBackdrop.style.display='none';
+
+document.getElementById('googleSign').onclick = async ()=>{
+  try{ await signInWithPopup(auth, provider); authBackdrop.style.display='none'; }catch(e){ console.error(e); alert('Błąd logowania Google'); }
+};
+
+document.getElementById('showEmail').onclick = ()=>{ document.getElementById('emailForm').style.display='flex'; };
+document.getElementById('emailSignUp').onclick = async ()=>{
+  const email = document.getElementById('emailInput').value;
+  const pass = document.getElementById('passInput').value;
+  try{ await createUserWithEmailAndPassword(auth, email, pass); authBackdrop.style.display='none'; }catch(e){ alert('Błąd: '+e.message); }
+};
+document.getElementById('emailSignIn').onclick = async ()=>{
+  const email = document.getElementById('emailInput').value;
+  const pass = document.getElementById('passInput').value;
+  try{ await signInWithEmailAndPassword(auth, email, pass); authBackdrop.style.display='none'; }catch(e){ alert('Błąd: '+e.message); }
+};
+
+/* auth state listener */
+onAuthStateChanged(auth, (u)=>{
+  user = u;
+  renderAuthUI();
+  if(user){
+    startRealtimeSync(user.uid);
+  } else {
+    // stop listeners if any
+    if(typeof unsubHab === 'function') unsubHab();
+    if(typeof unsubComp === 'function') unsubComp();
+    habitsCache = JSON.parse(localStorage.getItem('hm_offline')||'[]'); // fallback
+    // completionsCache left empty
+    renderDay();
+  }
+});
+
+/* ---------------- RENDER ALL ---------------- */
+function renderAll(){
+  renderTodayDate(); renderWeekBar(); renderDay(); renderAuthUI();
+}
+renderAll();
+
+/* ---------------- SERVICE WORKER (PWA) ---------------- */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(()=>{ console.log('sw registered'); }).catch(()=>{});
+}
+</script>
+</body>
+</html>
