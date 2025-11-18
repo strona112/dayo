@@ -166,31 +166,25 @@ html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%, #04
 
 <!-- Firebase SDK (v9 modular via CDN) -->
 <script type="module">
-/* =========================
-   FIREBASE + APP LOGIKA
-   v9 modułowy (CDN)
-   ========================= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, query, where, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-/* ----- WSTAW TUTAJ SWOJE KONFIGI FIREBASE ----- */
-/* 1) Utwórz projekt na console.firebase.google.com
-   2) Firebase => Project settings => SDK config -> use web v9
-   3) Wklej poniżej swoje wartości */
-const firebaseConfig = {
-  apiKey: "REPLACE_API_KEY",
-  authDomain: "REPLACE_AUTH_DOMAIN",
-  projectId: "REPLACE_PROJECT_ID",
-  storageBucket: "REPLACE_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_MESSAGING_SENDER_ID",
-  appId: "REPLACE_APP_ID"
-};
+  // === TWÓJ CONFIG ===
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkTe80eNt90_mM-f5zNWiGzACrWymzM-w",
+    authDomain: "dayo-e3b32.firebaseapp.com",
+    projectId: "dayo-e3b32",
+    storageBucket: "dayo-e3b32.firebasestorage.app",
+    messagingSenderId: "971722853532",
+    appId: "1:971722853532:web:d13bc8493764d5da347159",
+    measurementId: "G-0LXNQBVZWR"
+  };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-const db = getFirestore(app);
+  // === INICJALIZACJA ===
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
 /* ================== STAN APLIKACJI ================== */
 const DAY_NAMES = ['pon','wt','śr','czw','pt','sob','nd'];
