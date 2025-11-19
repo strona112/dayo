@@ -176,7 +176,7 @@
   </div>
 
   <!-- FIREBASE SDK (modular) -->
- <script type="module">
+<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import {
     getAuth,
@@ -185,7 +185,9 @@
     signOut,
     onAuthStateChanged,
     createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence
   } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
   import {
@@ -217,6 +219,11 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
+
+  // Ensure auth persistence in browser (so user stays logged in after closing)
+  setPersistence(auth, browserLocalPersistence).catch(err => {
+    console.warn('setPersistence failed:', err);
+  });
 
   /* ========== STATE & HELPERS ========== */
   const DAY_NAMES = ['pon','wt','śr','czw','pt','sob','nd'];
@@ -353,15 +360,36 @@
   showEmail.onclick = ()=> { emailForm.style.display = 'flex'; };
 
   googleSign.onclick = async ()=>{
-    try{ await signInWithPopup(auth, provider); authBackdrop.style.display='none'; } catch(e){ console.error(e); alert('Błąd logowania Google: '+(e.message||e)); }
+    try{
+      await signInWithPopup(auth, provider);
+      authBackdrop.style.display='none';
+    } catch(e){
+      console.error('Błąd logowania Google:', e);
+      alert('Błąd logowania Google: '+(e.message||e));
+    }
   };
-  emailSignUp.onclick = async ()=>{ const email = emailInput.value.trim(); const pass = passInput.value; if(!email||!pass) return alert('Wpisz email i hasło'); try{ await createUserWithEmailAndPassword(auth,email,pass); authBackdrop.style.display='none'; } catch(e){ alert('Błąd rejestracji: '+(e.message||e)); }};
-  emailSignIn.onclick = async ()=>{ const email = emailInput.value.trim(); const pass = passInput.value; if(!email||!pass) return alert('Wpisz email i hasło'); try{ await signInWithEmailAndPassword(auth,email,pass); authBackdrop.style.display='none'; } catch(e){ alert('Błąd logowania: '+(e.message||e)); }};
+  emailSignUp.onclick = async ()=>{ 
+    const email = emailInput.value.trim(); const pass = passInput.value;
+    if(!email||!pass) return alert('Wpisz email i hasło');
+    try{
+      await createUserWithEmailAndPassword(auth,email,pass);
+      authBackdrop.style.display='none';
+    } catch(e){ console.error('register err', e); alert('Błąd rejestracji: '+(e.message||e)); }
+  };
+  emailSignIn.onclick = async ()=>{ 
+    const email = emailInput.value.trim(); const pass = passInput.value;
+    if(!email||!pass) return alert('Wpisz email i hasło');
+    try{
+      await signInWithEmailAndPassword(auth,email,pass);
+      authBackdrop.style.display='none';
+    } catch(e){ console.error('signin err', e); alert('Błąd logowania: '+(e.message||e)); }
+  };
 
   /* ========== FIRESTORE REALTIME SYNC ========== */
   let unsubHab = null, unsubComp = null;
 
   function startRealtimeSync(uid){
+    console.log('Starting realtime sync for uid=', uid);
     if(unsubHab) try{ unsubHab(); }catch(e){}
     if(unsubComp) try{ unsubComp(); }catch(e){}
 
@@ -376,6 +404,7 @@
         newCache.push(data);
       });
       habitsCache = newCache;
+      console.log('habits snapshot', habitsCache);
       renderDay();
     }, err=>{ console.error('habits onSnapshot err', err); });
 
@@ -389,6 +418,7 @@
         if(d && d.date && d.map) comps[d.date] = d.map;
       });
       completionsCache = comps;
+      console.log('completions snapshot', completionsCache);
       renderDay();
     }, err=>{ console.error('comps onSnapshot err', err); });
   }
@@ -404,31 +434,54 @@
     const u = requireUserOrThrow();
     const payload = {...h};
     delete payload._tempId;
-    await addDoc(collection(db, `users/${u.uid}/habits`), {...payload, createdAt: serverTimestamp()});
+    try{
+      const ref = await addDoc(collection(db, `users/${u.uid}/habits`), {...payload, createdAt: serverTimestamp()});
+      console.log('habit added, id=', ref.id);
+    }catch(e){
+      console.error('addHabitToServer err', e);
+      throw e;
+    }
     // onSnapshot will update local habitsCache
   }
 
   async function deleteHabitOnServer(docId){
     const u = requireUserOrThrow();
-    await deleteDoc(doc(db, `users/${u.uid}/habits`, docId));
+    try{
+      await deleteDoc(doc(db, `users/${u.uid}/habits`, docId));
+      console.log('deleted habit', docId);
+    }catch(e){
+      console.error('deleteHabitOnServer err', e);
+      throw e;
+    }
   }
 
   async function addExclusionOnServer(docId, dateIso){
     const u = requireUserOrThrow();
-    const docRef = doc(db, `users/${u.uid}/habits`, docId);
-    // merge: read current exclusions from cache (authoritative)
-    const hLocal = habitsCache.find(x=>x._docId===docId);
-    const exclusions = (hLocal?.exclusions || []);
-    if(!exclusions.includes(dateIso)) exclusions.push(dateIso);
-    await updateDoc(docRef, { exclusions });
+    try{
+      const docRef = doc(db, `users/${u.uid}/habits`, docId);
+      const hLocal = habitsCache.find(x=>x._docId===docId);
+      const exclusions = (hLocal?.exclusions || []);
+      if(!exclusions.includes(dateIso)) exclusions.push(dateIso);
+      await updateDoc(docRef, { exclusions });
+      console.log('added exclusion', dateIso, 'to', docId);
+    }catch(e){
+      console.error('addExclusionOnServer err', e);
+      throw e;
+    }
   }
 
   async function toggleCompletionServer(habitDocId, dateIso){
     const u = requireUserOrThrow();
-    const docRef = doc(db, `users/${u.uid}/completions`, dateIso);
-    const existing = completionsCache[dateIso] ? {...completionsCache[dateIso]} : {};
-    existing[habitDocId] = !existing[habitDocId];
-    await setDoc(docRef, { userId: u.uid, date: dateIso, map: existing }, { merge: true });
+    try{
+      const docRef = doc(db, `users/${u.uid}/completions`, dateIso);
+      const existing = completionsCache[dateIso] ? {...completionsCache[dateIso]} : {};
+      existing[habitDocId] = !existing[habitDocId];
+      await setDoc(docRef, { userId: u.uid, date: dateIso, map: existing }, { merge: true });
+      console.log('toggled completion', habitDocId, dateIso, existing[habitDocId]);
+    }catch(e){
+      console.error('toggleCompletionServer err', e);
+      throw e;
+    }
   }
 
   /* ========== RENDER DAY ======== */
@@ -488,7 +541,6 @@
       renderDay();
       toggleCompletionServer(habitDocId, dateIso).catch(err=>{
         console.error('toggle comp error', err);
-        // on failure, we will rely on snapshot/state from server; optionally show error
         alert('Błąd zapisu wykonania.');
       });
     }catch(e){ console.error(e); }
@@ -588,6 +640,7 @@
 
   /* ========== AUTH LISTENER & START SYNC ======== */
   onAuthStateChanged(auth, async (u)=>{
+    console.log('onAuthStateChanged:', u ? u.uid : null);
     renderAuthUI();
     if(u){
       // start realtime sync for this user
@@ -611,6 +664,7 @@
     navigator.serviceWorker.register('sw.js').then(()=>console.log('sw registered')).catch(()=>{});
   }
 </script>
+
 
 
 </body>
