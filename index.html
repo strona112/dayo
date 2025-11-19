@@ -176,7 +176,7 @@
   </div>
 
   <!-- FIREBASE SDK (modular) -->
-  <script type="module">
+ <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import {
     getAuth,
@@ -192,14 +192,12 @@
     getFirestore,
     collection,
     query,
-    where,
     onSnapshot,
     addDoc,
     doc,
     updateDoc,
     deleteDoc,
     setDoc,
-    getDoc,
     serverTimestamp
   } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
@@ -225,7 +223,6 @@
   let today = new Date(); today.setHours(0,0,0,0);
   let currentDate = new Date(); currentDate.setHours(0,0,0,0);
   let weekOffset = 0;
-  let user = null; // mirror of auth.currentUser (kept in sync via onAuthStateChanged)
 
   const todayEl = document.getElementById('todayDate');
   const weekBar = document.getElementById('weekBar');
@@ -233,7 +230,6 @@
   const emptyState = document.getElementById('emptyState');
   const openAddBtn = document.getElementById('openAdd');
   const modalBackdrop = document.getElementById('modalBackdrop');
-  const addModal = document.getElementById('addModal');
   const iconGrid = document.getElementById('iconGrid');
   const colorGrid = document.getElementById('colorGrid');
   const weekSelect = document.getElementById('weekSelect');
@@ -263,9 +259,9 @@
   const confirmText = document.getElementById('confirmText');
   const confirmBtns = document.getElementById('confirmBtns');
 
-  // local caches used for render (kept in sync via listeners)
-  let habitsCache = []; // array of habit objects (from server or offline)
-  let completionsCache = {}; // { 'YYYY-MM-DD': { habitDocId: true } }
+  // caches populated from Firestore snapshots
+  let habitsCache = [];
+  let completionsCache = {}; // { 'YYYY-MM-DD': { habitId: true } }
 
   // pickers
   const ICONS = ['🏃','📚','🧘','💪','🛌','☕','🍎','🧹','🚰','🎧','🎯','🎨','🧩','🚴','🏊','🏋️‍♂️','🖥️','✍️','📅','🎵'];
@@ -334,7 +330,7 @@
   /* ========== AUTH UI & flows ========== */
   function renderAuthUI(){
     authRow.innerHTML = '';
-    const current = auth.currentUser || user;
+    const current = auth.currentUser;
     if(current){
       const span = document.createElement('div'); span.className='user-bubble'; span.textContent = current.email || current.displayName || 'User';
       const btn = document.createElement('button'); btn.className='sign-btn'; btn.textContent='Wyloguj';
@@ -343,9 +339,6 @@
           await signOut(auth);
         }catch(e){
           console.error('signOut err', e);
-          // fallback local signout:
-          user = null;
-          renderAuthUI();
         }
       };
       authRow.append(span, btn);
@@ -372,11 +365,10 @@
     if(unsubHab) try{ unsubHab(); }catch(e){}
     if(unsubComp) try{ unsubComp(); }catch(e){}
 
-    // user's habits collection
+    // habits
     const colRef = collection(db, `users/${uid}/habits`);
     const q = query(colRef);
     unsubHab = onSnapshot(q, snapshot=>{
-      // snapshot replaces local cache so server is source of truth
       const newCache = [];
       snapshot.forEach(ds=>{
         const data = ds.data();
@@ -385,11 +377,9 @@
       });
       habitsCache = newCache;
       renderDay();
-    }, err=>{
-      console.error('habits onSnapshot err', err);
-    });
+    }, err=>{ console.error('habits onSnapshot err', err); });
 
-    // completions documents under users/{uid}/completions (doc id = dateIso)
+    // completions (documents keyed by date)
     const compRef = collection(db, `users/${uid}/completions`);
     const q2 = query(compRef);
     unsubComp = onSnapshot(q2, snapshot=>{
@@ -400,150 +390,48 @@
       });
       completionsCache = comps;
       renderDay();
-    }, err=>{
-      console.error('comps onSnapshot err', err);
-    });
+    }, err=>{ console.error('comps onSnapshot err', err); });
   }
 
-  /* ========== SYNC LOCAL -> SERVER on login ==========
-     When user logs in, upload any offline habits & completions and then clear offline storage.
-     NOTE: this is best-effort; if duplicates appear later, user can handle them.
-  */
-  async function migrateLocalToServer(uid){
-    const offHab = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-    const offComps = JSON.parse(localStorage.getItem('hm_comps')||'{}');
-
-    // habits
-    for(const h of offHab){
-      try{
-        // skip if it already looks like a server doc
-        if(h._docId) continue;
-        // remove _tempId before pushing to server
-        const copy = {...h};
-        delete copy._tempId;
-        await addDoc(collection(db, `users/${uid}/habits`), {...copy, createdAt: serverTimestamp()});
-      }catch(e){
-        console.error('migrate habit err', e);
-      }
-    }
-    // completions: write each date doc (map uses habit ids; offline maps may reference _tempId and won't match server ids)
-    for(const dateIso of Object.keys(offComps)){
-      try{
-        const docRef = doc(db, `users/${uid}/completions`, dateIso);
-        const map = offComps[dateIso] || {};
-        await setDoc(docRef, { userId: uid, date: dateIso, map }, { merge: true });
-      }catch(e){ console.error('migrate comp err', e); }
-    }
-    // clear local fallback after attempting
-    localStorage.removeItem('hm_offline');
-    localStorage.removeItem('hm_comps');
-  }
-
-  /* ========== HELPERS: CRUD & completions ========== */
-  // Utility: get "truthful" current user at the moment of action
-  function getActiveUser(){
-    return auth.currentUser || user;
+  /* ========== HELPERS: CRUD & completions (ONLINE ONLY) ========== */
+  function requireUserOrThrow(){
+    const u = auth.currentUser;
+    if(!u) throw new Error('Musisz być zalogowany, aby wykonać tę operację.');
+    return u;
   }
 
   async function addHabitToServer(h){
-    const activeUser = getActiveUser();
-    if(!activeUser){
-      // offline: persist to localStorage
-      const local = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-      local.push(h);
-      localStorage.setItem('hm_offline', JSON.stringify(local));
-      // keep local cache in sync
-      habitsCache = local;
-      renderDay();
-      return;
-    }
-    // server write
-    // remove any transient-only props before sending
+    const u = requireUserOrThrow();
     const payload = {...h};
     delete payload._tempId;
-    try{
-      await addDoc(collection(db, `users/${activeUser.uid}/habits`), {...payload, createdAt: serverTimestamp()});
-      // onSnapshot will update habitsCache when server sends the new doc
-    }catch(e){
-      console.error('addHabitToServer err', e);
-      // If addDoc fails, fallback to local storage to avoid data loss
-      const local = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-      local.push(h);
-      localStorage.setItem('hm_offline', JSON.stringify(local));
-      habitsCache = local;
-      renderDay();
-      throw e;
-    }
+    await addDoc(collection(db, `users/${u.uid}/habits`), {...payload, createdAt: serverTimestamp()});
+    // onSnapshot will update local habitsCache
   }
 
   async function deleteHabitOnServer(docId){
-    const activeUser = getActiveUser();
-    if(!activeUser){
-      let local = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-      local = local.filter(x=>x._tempId !== docId && x.id !== docId);
-      localStorage.setItem('hm_offline', JSON.stringify(local));
-      habitsCache = local;
-      renderDay();
-      return;
-    }
-    try{
-      await deleteDoc(doc(db, `users/${activeUser.uid}/habits`, docId));
-    }catch(e){
-      console.error('deleteHabitOnServer err', e);
-      throw e;
-    }
+    const u = requireUserOrThrow();
+    await deleteDoc(doc(db, `users/${u.uid}/habits`, docId));
   }
 
   async function addExclusionOnServer(docId, dateIso){
-    const activeUser = getActiveUser();
-    if(!activeUser){
-      const local = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-      const h = local.find(x=>x._tempId===docId || x.id===docId);
-      if(h){ h.exclusions = h.exclusions||[]; if(!h.exclusions.includes(dateIso)) h.exclusions.push(dateIso); localStorage.setItem('hm_offline', JSON.stringify(local)); habitsCache = local; renderDay(); }
-      return;
-    }
-    try{
-      const docRef = doc(db, `users/${activeUser.uid}/habits`, docId);
-      // read local cache & merge
-      const hLocal = habitsCache.find(x=>x._docId===docId);
-      const exclusions = (hLocal?.exclusions || []);
-      if(!exclusions.includes(dateIso)) exclusions.push(dateIso);
-      await updateDoc(docRef, { exclusions });
-    }catch(e){
-      console.error('addExclusionOnServer err', e);
-      throw e;
-    }
+    const u = requireUserOrThrow();
+    const docRef = doc(db, `users/${u.uid}/habits`, docId);
+    // merge: read current exclusions from cache (authoritative)
+    const hLocal = habitsCache.find(x=>x._docId===docId);
+    const exclusions = (hLocal?.exclusions || []);
+    if(!exclusions.includes(dateIso)) exclusions.push(dateIso);
+    await updateDoc(docRef, { exclusions });
   }
 
   async function toggleCompletionServer(habitDocId, dateIso){
-    const activeUser = getActiveUser();
-    if(!activeUser){
-      const local = JSON.parse(localStorage.getItem('hm_comps')||'{}');
-      local[dateIso] = local[dateIso] || {};
-      local[dateIso][habitDocId] = !local[dateIso][habitDocId];
-      localStorage.setItem('hm_comps', JSON.stringify(local));
-      completionsCache = local;
-      renderDay();
-      return;
-    }
-    try{
-      const docRef = doc(db, `users/${activeUser.uid}/completions`, dateIso);
-      const existing = completionsCache[dateIso] ? {...completionsCache[dateIso]} : {};
-      existing[habitDocId] = !existing[habitDocId];
-      await setDoc(docRef, { userId: activeUser.uid, date: dateIso, map: existing }, { merge: true });
-    }catch(e){
-      console.error('toggleCompletionServer err', e);
-      // fallback to local if server fails
-      const local = JSON.parse(localStorage.getItem('hm_comps')||'{}');
-      local[dateIso] = local[dateIso] || {};
-      local[dateIso][habitDocId] = !local[dateIso][habitDocId];
-      localStorage.setItem('hm_comps', JSON.stringify(local));
-      completionsCache = local;
-      renderDay();
-    }
+    const u = requireUserOrThrow();
+    const docRef = doc(db, `users/${u.uid}/completions`, dateIso);
+    const existing = completionsCache[dateIso] ? {...completionsCache[dateIso]} : {};
+    existing[habitDocId] = !existing[habitDocId];
+    await setDoc(docRef, { userId: u.uid, date: dateIso, map: existing }, { merge: true });
   }
 
-  /* ========== RENDER DAY ========== */
+  /* ========== RENDER DAY ======== */
   function matches(h,d){
     if(!h) return false;
     if(h.recurrence === 'once') return h.date === iso(d);
@@ -556,13 +444,14 @@
     }
     return false;
   }
+
   function renderDay(){
     const list = habitsList; list.innerHTML='';
     const items = (habitsCache||[]).filter(h=>matches(h,currentDate)).sort((a,b)=> (a.start||'').localeCompare(b.start||'') || (a.name||'').localeCompare(b.name||''));
     emptyState.style.display = items.length ? 'none' : 'block';
     items.forEach(h=>{
       const card = document.createElement('div'); card.className='habit-card';
-      const docId = h._docId || h._tempId || h.id || '';
+      const docId = h._docId || h.id || '';
       if(completionsCache[iso(currentDate)]?.[docId]) card.classList.add('done');
       const row = document.createElement('div'); row.className='habit-row';
       const check = document.createElement('div'); check.className='check'; check.style.color = h.color || selectedColor;
@@ -587,20 +476,29 @@
     });
   }
 
-  /* ========== ANIMATIONS ========== */
+  /* ========== ANIMATIONS & COMPLETION UI ======== */
   function toggleDone(habitDocId){
-    const dateIso = iso(currentDate);
-    completionsCache[dateIso] = completionsCache[dateIso] || {};
-    completionsCache[dateIso][habitDocId] = !completionsCache[dateIso][habitDocId];
-    renderDay();
-    toggleCompletionServer(habitDocId, dateIso).catch(err=>{ console.error('toggle comp error', err); });
+    try{
+      const u = auth.currentUser;
+      if(!u){ return alert('Zaloguj się, aby oznaczać wykonanie.'); }
+      const dateIso = iso(currentDate);
+      // optimistic visual toggle
+      completionsCache[dateIso] = completionsCache[dateIso] || {};
+      completionsCache[dateIso][habitDocId] = !completionsCache[dateIso][habitDocId];
+      renderDay();
+      toggleCompletionServer(habitDocId, dateIso).catch(err=>{
+        console.error('toggle comp error', err);
+        // on failure, we will rely on snapshot/state from server; optionally show error
+        alert('Błąd zapisu wykonania.');
+      });
+    }catch(e){ console.error(e); }
   }
   function animateDoneVisual(card,check,id){
     const filled = !!completionsCache[iso(currentDate)]?.[id];
     if(filled){ check.classList.add('filled'); card.classList.add('flash-done'); setTimeout(()=>card.classList.remove('flash-done'),900); try{ check.animate([{transform:'scale(1)'},{transform:'scale(1.26)'},{transform:'scale(1)'}],{duration:520,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){} } else { check.classList.remove('filled'); card.classList.remove('flash-done'); }
   }
 
-  /* ========== SWIPE SUPPORT ========== */
+  /* ========== SWIPE SUPPORT ======== */
   function enableSwipe(el, action){
     let sx=0,cx=0,drag=false;
     el.addEventListener('touchstart', e=>{ drag=true; sx = e.touches[0].clientX; el.style.transition='none'; });
@@ -612,46 +510,36 @@
     window.addEventListener('mouseup', ()=>{ if(!md) return; md=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); cx=0; });
   }
 
-  /* ========== ADD HABIT UI ========== */
+  /* ========== ADD HABIT UI ======== */
   openAddBtn.onclick = ()=>{ modalBackdrop.style.display='flex'; habitNameInput.value=''; habitDescInput.value=''; document.getElementById('recurrence').value='once'; weekSelect.style.display='none'; selectedDays=[]; [...weekSelect.children].forEach(n=>n.classList.remove('active')); };
   cancelAdd.onclick = ()=> modalBackdrop.style.display='none';
 
   saveAdd.onclick = async ()=>{
-    const name = habitNameInput.value.trim() || 'Nawyk';
-    const desc = habitDescInput.value.trim() || '';
-    const start = startTimeInput.value || '';
-    const end = endTimeInput.value || '';
-    const rec = recurrence.value || 'once';
-    const base = { name, desc, icon: selectedIcon, color: selectedColor, start, end, recurrence: rec, exclusions: [] };
-    if(rec==='once') base.date = iso(currentDate);
-    if(rec==='repeat') base.days = [...selectedDays];
-    if(rec==='daily') base.days=[0,1,2,3,4,5,6];
-
-    // optimistic UI: push temp object for immediate feedback (tempId used only client-side)
-    base._tempId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-    habitsCache.push(base);
-    renderDay();
-    modalBackdrop.style.display='none';
-
-    // server write (if logged in) or local fallback
     try{
-      const activeUser = getActiveUser();
-      if(activeUser){
-        // add to server directly (do NOT write to localStorage)
-        // we call addHabitToServer which handles server write
-        await addHabitToServer(base);
-        // onSnapshot will reflect the server doc; no need to remove temp manually
-      } else {
-        // offline: keep in local storage
-        await addHabitToServer(base);
-      }
+      const u = auth.currentUser;
+      if(!u) return alert('Zaloguj się aby dodawać nawyki.');
+
+      const name = habitNameInput.value.trim() || 'Nawyk';
+      const desc = habitDescInput.value.trim() || '';
+      const start = startTimeInput.value || '';
+      const end = endTimeInput.value || '';
+      const rec = recurrence.value || 'once';
+      const base = { name, desc, icon: selectedIcon, color: selectedColor, start, end, recurrence: rec, exclusions: [] };
+      if(rec==='once') base.date = iso(currentDate);
+      if(rec==='repeat') base.days = [...selectedDays];
+      if(rec==='daily') base.days=[0,1,2,3,4,5,6];
+
+      // write to server directly
+      await addHabitToServer(base);
+      modalBackdrop.style.display='none';
+      // onSnapshot will update UI
     }catch(e){
-      console.error('add habit err', e);
+      console.error('saveAdd err', e);
       alert('Błąd zapisu: ' + (e.message||e));
     }
   };
 
-  /* ========== DELETE CONFIRM MODAL ========== */
+  /* ========== DELETE CONFIRM MODAL ======== */
   let deleteContext = null;
   function showDeleteModal(h, element){
     deleteContext = { h, element };
@@ -667,13 +555,8 @@
       btnDelete.onclick = async ()=>{
         confirmBackdrop.style.display='none';
         try{
-          const activeUser = getActiveUser();
-          if(activeUser && h._docId){ await deleteHabitOnServer(h._docId); }
-          else {
-            habitsCache = habitsCache.filter(x=>x._tempId !== h._tempId && x.id!==h.id);
-            localStorage.setItem('hm_offline', JSON.stringify(habitsCache));
-            renderDay();
-          }
+          if(!h._docId) throw new Error('Brak id dokumentu - nie można usunąć.');
+          await deleteHabitOnServer(h._docId);
         }catch(e){ console.error(e); alert('Błąd usuwania'); }
         deleteContext=null;
       };
@@ -684,9 +567,8 @@
         confirmBackdrop.style.display='none';
         const dayIso = iso(currentDate);
         try{
-          const activeUser = getActiveUser();
-          if(activeUser && h._docId){ await addExclusionOnServer(h._docId, dayIso); }
-          else { h.exclusions = h.exclusions || []; if(!h.exclusions.includes(dayIso)) h.exclusions.push(dayIso); localStorage.setItem('hm_offline', JSON.stringify(habitsCache)); renderDay(); }
+          if(!h._docId) throw new Error('Brak id dokumentu - nie można dodać wyjątku.');
+          await addExclusionOnServer(h._docId, dayIso);
         }catch(e){ console.error(e); alert('Błąd'); }
         deleteContext=null;
       };
@@ -694,9 +576,8 @@
       btnAll.onclick = async ()=>{
         confirmBackdrop.style.display='none';
         try{
-          const activeUser = getActiveUser();
-          if(activeUser && h._docId) { await deleteHabitOnServer(h._docId); }
-          else { habitsCache = habitsCache.filter(x=>x._tempId !== h._tempId && x.id!==h.id); localStorage.setItem('hm_offline', JSON.stringify(habitsCache)); renderDay(); }
+          if(!h._docId) throw new Error('Brak id dokumentu - nie można usunąć.');
+          await deleteHabitOnServer(h._docId);
         }catch(e){ console.error(e); alert('Błąd'); }
         deleteContext=null;
       };
@@ -705,23 +586,18 @@
     confirmBackdrop.style.display='flex';
   }
 
-  /* ========== AUTH LISTENER & MIGRATION ========= */
+  /* ========== AUTH LISTENER & START SYNC ======== */
   onAuthStateChanged(auth, async (u)=>{
-    user = u;
     renderAuthUI();
-    if(user){
-      try{
-        // migrate any offline data to server, then start realtime sync
-        await migrateLocalToServer(user.uid).catch(e=>console.error('migrate err', e));
-      }catch(e){ console.error('migrate whole err', e); }
-      startRealtimeSync(user.uid);
+    if(u){
+      // start realtime sync for this user
+      startRealtimeSync(u.uid);
     } else {
-      // user logged out
+      // stop listeners & clear caches
       if(typeof unsubHab === 'function') try{ unsubHab(); }catch(e){}
       if(typeof unsubComp === 'function') try{ unsubComp(); }catch(e){}
-      // load offline fallback
-      habitsCache = JSON.parse(localStorage.getItem('hm_offline')||'[]');
-      completionsCache = JSON.parse(localStorage.getItem('hm_comps')||'{}');
+      habitsCache = [];
+      completionsCache = {};
       renderAll();
     }
   });
@@ -735,6 +611,7 @@
     navigator.serviceWorker.register('sw.js').then(()=>console.log('sw registered')).catch(()=>{});
   }
 </script>
+
 
 </body>
 </html>
