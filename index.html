@@ -1,4 +1,224 @@
-<script type="module">
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HabitMaster — Dayo (Firebase)</title>
+  <meta name="theme-color" content="#071428" />
+
+  <style>
+    :root{
+      --bg:#071022; --muted:#9bb0cf; --glass:rgba(255,255,255,0.03);
+      --accent1:#7c3aed; --accent2:#06b6d4; --radius:14px;
+      --shadow:0 14px 36px rgba(2,6,23,0.6);
+      --fast:180ms; --mid:320ms; --slow:520ms;
+      --nav-bg:#0a152b;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%, #041428 100%);color:#eaf3ff;-webkit-font-smoothing:antialiased}
+
+    /* HEADER */
+    .header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.02);position:sticky;top:0;z-index:40}
+    .today-date{font-weight:700}
+    .user-bubble{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:13px}
+    .sign-btn{background:none;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
+
+    /* WEEK BAR */
+    .weekbar{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px);box-shadow:var(--shadow);position:sticky;top:56px;z-index:30}
+    .week-arrow{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,0.03);cursor:pointer}
+    .week-strip{display:flex;flex:1;gap:8px}
+    .week-col{flex:1;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;padding:8px;border-radius:10px;transition:all var(--mid)}
+    .week-col .num{display:block;font-size:18px;font-weight:700;color:#fff}
+    .week-col.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;transform:translateY(-4px);box-shadow:0 8px 22px rgba(12,30,100,0.45)}
+
+    /* APP */
+    .app{padding:16px;padding-bottom:180px}
+    .habit-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);box-shadow:0 6px 20px rgba(0,0,0,0.5);margin-bottom:12px;transition:transform var(--mid),opacity var(--mid),filter var(--mid);touch-action:pan-y;overflow:hidden}
+    .habit-card.done{opacity:.5;filter:grayscale(.2);text-decoration:line-through}
+    .habit-row{display:flex;align-items:center;gap:12px;width:100%}
+    .check{width:36px;height:36px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:all var(--mid)}
+    .check.filled{background:currentColor;box-shadow:0 10px 24px rgba(0,0,0,0.45);transform:scale(1.18)}
+    .icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(255,255,255,0.02)}
+    .meta{flex:1;min-width:0;display:flex;flex-direction:column}
+    .title{font-weight:700;font-size:15px}
+    .time{font-size:13px;color:var(--muted)}
+    .btn-del{border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted);padding:6px 10px;border-radius:10px;font-size:13px;cursor:pointer}
+    .habit-extra{font-size:13px;color:#b7cde6;padding:8px 6px 0 6px;display:none}
+    .habit-card.expanded .habit-extra{display:block}
+
+    /* FAB */
+    .fab{position:fixed;right:18px;bottom:120px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,var(--accent1),var(--accent2));border:none;color:white;box-shadow:var(--shadow);cursor:pointer;z-index:50}
+
+    /* MOTIVATION POPUP */
+    .motiv-popup{
+      position:fixed;left:50%;bottom:160px;transform:translateX(-50%) translateY(20px);
+      background:linear-gradient(135deg,var(--accent1),var(--accent2));
+      padding:14px 22px;border-radius:12px;font-size:18px;font-weight:700;
+      opacity:0;transition:all .4s ease;pointer-events:none;z-index:80;
+      box-shadow:0 10px 30px rgba(0,0,0,0.45);
+    }
+    .motiv-popup.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* MODALS */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+    .modal{width:100%;max-width:540px;background:#071428;border-radius:14px;padding:16px;box-shadow:var(--shadow);max-height:84vh;overflow:auto}
+    .icon-grid,.color-grid{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+    .icon-choice{width:48px;height:48px;border-radius:12px;background:#071a2b;display:grid;place-items:center;font-size:22px;cursor:pointer;transition:transform .16s}
+    .icon-choice.active{outline:3px solid rgba(255,255,255,0.06);transform:scale(1.12)}
+    .color-choice{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s}
+    .color-choice.active{box-shadow:0 6px 18px rgba(0,0,0,0.5);transform:translateY(-4px)}
+
+    /* CONFIRM BOX */
+    .confirm-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:70}
+    .confirm-box{background:#071428;border-radius:14px;padding:18px;box-shadow:var(--shadow);width:92%;max-width:420px;color:white;text-align:center}
+    .confirm-btns{display:flex;gap:12px;margin-top:16px}
+    .cbtn{flex:1;padding:12px;border-radius:12px;font-weight:700;border:none;cursor:pointer}
+
+    /* AUTH */
+    .small-ico{font-size:14px;margin-right:6px}
+
+    /* BOTTOM NAV */
+    .bottom-nav{
+      position:fixed;
+      bottom:20px;
+      left:50%;transform:translateX(-50%);
+      width:86%;
+      background:var(--nav-bg);
+      padding:12px 18px;
+      border-radius:22px;
+      display:flex;
+      justify-content:space-around;
+      align-items:center;
+      box-shadow:0 10px 30px rgba(0,0,0,0.4);
+      z-index:90;
+    }
+    .nav-item{
+      font-size:22px;
+      opacity:.55;
+      transition:all .25s;
+      cursor:pointer;
+    }
+    .nav-item.active{
+      opacity:1;
+      transform:translateY(-4px) scale(1.15);
+      color:var(--accent2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="left"><div class="today-date" id="todayDate">...</div></div>
+    <div class="status-row" id="authRow">
+      <button id="btnSignIn" class="sign-btn">Zaloguj</button>
+    </div>
+  </div>
+
+  <!-- WEEK BAR -->
+  <div class="weekbar">
+    <div class="week-arrow" id="prevWeek">◀</div>
+    <div class="week-strip" id="weekBar"></div>
+    <div class="week-arrow" id="nextWeek">▶</div>
+  </div>
+
+  <!-- MOTIVATION POPUP -->
+  <div class="motiv-popup" id="motivPopup">Super!</div>
+
+  <!-- APP -->
+  <div class="app" id="dayView">
+    <div id="habitsList"></div>
+    <div id="emptyState" style="opacity:.6;text-align:center;margin-top:20px">Brak nawyków</div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="navHome">🏠</div>
+    <div class="nav-item" id="navEvents">📅</div>
+    <div class="nav-item" id="navSettings">⚙️</div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="openAdd" title="Dodaj nawyk">＋</button>
+
+  <!-- ADD MODAL -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" id="addModal">
+      <h3>Dodaj nawyk</h3>
+
+      <label>Nazwa</label>
+      <input id="habitName" placeholder="Np. Ćwiczenia" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0" />
+
+      <label>Opis (opcjonalnie)</label>
+      <textarea id="habitDesc" placeholder="Krótki opis..." style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0;height:70px"></textarea>
+
+      <label>Ikona</label>
+      <div class="icon-grid" id="iconGrid"></div>
+
+      <label>Kolor</label>
+      <div class="color-grid" id="colorGrid"></div>
+
+      <label>Powtarzanie</label>
+      <select id="recurrence" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0">
+        <option value="once">Tylko dziś</option>
+        <option value="daily">Codziennie</option>
+        <option value="repeat">Powtarzające się</option>
+      </select>
+
+      <div id="weekSelect" style="display:none" class="icon-grid"></div>
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="flex:1">
+          <label>Start</label>
+          <input type="time" id="startTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" />
+        </div>
+        <div style="flex:1">
+          <label>Koniec</label>
+          <input type="time" id="endTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="saveAdd" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white;font-size:16px;cursor:pointer">Dodaj nawyk</button>
+        <button id="cancelAdd" style="flex:0 0 60px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted);">Anuluj</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DELETE -->
+  <div class="confirm-backdrop" id="confirmBackdrop">
+    <div class="confirm-box" id="confirmBox">
+      <div class="confirm-title" id="confirmTitle">Usuń nawyk?</div>
+      <div class="confirm-text" id="confirmText">Co zrobić z tym nawykiem?</div>
+      <div class="confirm-btns" id="confirmBtns"></div>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-backdrop" id="authBackdrop">
+    <div class="modal">
+      <h3>Zaloguj się</h3>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <button id="googleSign" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:#4285f4;color:white">Zaloguj przez Google</button>
+        <button id="showEmail" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Email</button>
+      </div>
+
+      <div id="emailForm" style="display:none;flex-direction:column;gap:8px">
+        <input id="emailInput" class="email-input" placeholder="Email" />
+        <input id="passInput" class="email-input" placeholder="Hasło" type="password" />
+
+        <div style="display:flex;gap:8px">
+          <button id="emailSignUp" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white">Zarejestruj</button>
+          <button id="emailSignIn" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Zaloguj</button>
+        </div>
+      </div>
+
+      <button id="authClose" class="link-like" style="margin-top:10px">Zamknij</button>
+    </div>
+  </div>
+
+  
+    <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import {
     getAuth,
@@ -713,3 +933,7 @@
   }
 
 </script>
+
+
+</body>
+</html>
