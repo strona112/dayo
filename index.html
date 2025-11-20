@@ -1,224 +1,4 @@
-<!doctype html>
-<html lang="pl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HabitMaster — Dayo (Firebase)</title>
-  <meta name="theme-color" content="#071428" />
-
-  <style>
-    :root{
-      --bg:#071022; --muted:#9bb0cf; --glass:rgba(255,255,255,0.03);
-      --accent1:#7c3aed; --accent2:#06b6d4; --radius:14px;
-      --shadow:0 14px 36px rgba(2,6,23,0.6);
-      --fast:180ms; --mid:320ms; --slow:520ms;
-      --nav-bg:#0a152b;
-    }
-    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%, #041428 100%);color:#eaf3ff;-webkit-font-smoothing:antialiased}
-
-    /* HEADER */
-    .header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.02);position:sticky;top:0;z-index:40}
-    .today-date{font-weight:700}
-    .user-bubble{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:13px}
-    .sign-btn{background:none;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
-
-    /* WEEK BAR */
-    .weekbar{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px);box-shadow:var(--shadow);position:sticky;top:56px;z-index:30}
-    .week-arrow{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,0.03);cursor:pointer}
-    .week-strip{display:flex;flex:1;gap:8px}
-    .week-col{flex:1;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;padding:8px;border-radius:10px;transition:all var(--mid)}
-    .week-col .num{display:block;font-size:18px;font-weight:700;color:#fff}
-    .week-col.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;transform:translateY(-4px);box-shadow:0 8px 22px rgba(12,30,100,0.45)}
-
-    /* APP */
-    .app{padding:16px;padding-bottom:180px}
-    .habit-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);box-shadow:0 6px 20px rgba(0,0,0,0.5);margin-bottom:12px;transition:transform var(--mid),opacity var(--mid),filter var(--mid);touch-action:pan-y;overflow:hidden}
-    .habit-card.done{opacity:.5;filter:grayscale(.2);text-decoration:line-through}
-    .habit-row{display:flex;align-items:center;gap:12px;width:100%}
-    .check{width:36px;height:36px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:all var(--mid)}
-    .check.filled{background:currentColor;box-shadow:0 10px 24px rgba(0,0,0,0.45);transform:scale(1.18)}
-    .icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(255,255,255,0.02)}
-    .meta{flex:1;min-width:0;display:flex;flex-direction:column}
-    .title{font-weight:700;font-size:15px}
-    .time{font-size:13px;color:var(--muted)}
-    .btn-del{border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted);padding:6px 10px;border-radius:10px;font-size:13px;cursor:pointer}
-    .habit-extra{font-size:13px;color:#b7cde6;padding:8px 6px 0 6px;display:none}
-    .habit-card.expanded .habit-extra{display:block}
-
-    /* FAB */
-    .fab{position:fixed;right:18px;bottom:120px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,var(--accent1),var(--accent2));border:none;color:white;box-shadow:var(--shadow);cursor:pointer;z-index:50}
-
-    /* MOTIVATION POPUP */
-    .motiv-popup{
-      position:fixed;left:50%;bottom:160px;transform:translateX(-50%) translateY(20px);
-      background:linear-gradient(135deg,var(--accent1),var(--accent2));
-      padding:14px 22px;border-radius:12px;font-size:18px;font-weight:700;
-      opacity:0;transition:all .4s ease;pointer-events:none;z-index:80;
-      box-shadow:0 10px 30px rgba(0,0,0,0.45);
-    }
-    .motiv-popup.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-    /* MODALS */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
-    .modal{width:100%;max-width:540px;background:#071428;border-radius:14px;padding:16px;box-shadow:var(--shadow);max-height:84vh;overflow:auto}
-    .icon-grid,.color-grid{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
-    .icon-choice{width:48px;height:48px;border-radius:12px;background:#071a2b;display:grid;place-items:center;font-size:22px;cursor:pointer;transition:transform .16s}
-    .icon-choice.active{outline:3px solid rgba(255,255,255,0.06);transform:scale(1.12)}
-    .color-choice{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s}
-    .color-choice.active{box-shadow:0 6px 18px rgba(0,0,0,0.5);transform:translateY(-4px)}
-
-    /* CONFIRM BOX */
-    .confirm-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:70}
-    .confirm-box{background:#071428;border-radius:14px;padding:18px;box-shadow:var(--shadow);width:92%;max-width:420px;color:white;text-align:center}
-    .confirm-btns{display:flex;gap:12px;margin-top:16px}
-    .cbtn{flex:1;padding:12px;border-radius:12px;font-weight:700;border:none;cursor:pointer}
-
-    /* AUTH */
-    .small-ico{font-size:14px;margin-right:6px}
-
-    /* BOTTOM NAV */
-    .bottom-nav{
-      position:fixed;
-      bottom:20px;
-      left:50%;transform:translateX(-50%);
-      width:86%;
-      background:var(--nav-bg);
-      padding:12px 18px;
-      border-radius:22px;
-      display:flex;
-      justify-content:space-around;
-      align-items:center;
-      box-shadow:0 10px 30px rgba(0,0,0,0.4);
-      z-index:90;
-    }
-    .nav-item{
-      font-size:22px;
-      opacity:.55;
-      transition:all .25s;
-      cursor:pointer;
-    }
-    .nav-item.active{
-      opacity:1;
-      transform:translateY(-4px) scale(1.15);
-      color:var(--accent2);
-    }
-  </style>
-</head>
-<body>
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="left"><div class="today-date" id="todayDate">...</div></div>
-    <div class="status-row" id="authRow">
-      <button id="btnSignIn" class="sign-btn">Zaloguj</button>
-    </div>
-  </div>
-
-  <!-- WEEK BAR -->
-  <div class="weekbar">
-    <div class="week-arrow" id="prevWeek">◀</div>
-    <div class="week-strip" id="weekBar"></div>
-    <div class="week-arrow" id="nextWeek">▶</div>
-  </div>
-
-  <!-- MOTIVATION POPUP -->
-  <div class="motiv-popup" id="motivPopup">Super!</div>
-
-  <!-- APP -->
-  <div class="app" id="dayView">
-    <div id="habitsList"></div>
-    <div id="emptyState" style="opacity:.6;text-align:center;margin-top:20px">Brak nawyków</div>
-  </div>
-
-  <!-- BOTTOM NAV -->
-  <div class="bottom-nav">
-    <div class="nav-item active" id="navHome">🏠</div>
-    <div class="nav-item" id="navEvents">📅</div>
-    <div class="nav-item" id="navSettings">⚙️</div>
-  </div>
-
-  <!-- FAB -->
-  <button class="fab" id="openAdd" title="Dodaj nawyk">＋</button>
-
-  <!-- ADD MODAL -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" id="addModal">
-      <h3>Dodaj nawyk</h3>
-
-      <label>Nazwa</label>
-      <input id="habitName" placeholder="Np. Ćwiczenia" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0" />
-
-      <label>Opis (opcjonalnie)</label>
-      <textarea id="habitDesc" placeholder="Krótki opis..." style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0;height:70px"></textarea>
-
-      <label>Ikona</label>
-      <div class="icon-grid" id="iconGrid"></div>
-
-      <label>Kolor</label>
-      <div class="color-grid" id="colorGrid"></div>
-
-      <label>Powtarzanie</label>
-      <select id="recurrence" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0">
-        <option value="once">Tylko dziś</option>
-        <option value="daily">Codziennie</option>
-        <option value="repeat">Powtarzające się</option>
-      </select>
-
-      <div id="weekSelect" style="display:none" class="icon-grid"></div>
-
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <div style="flex:1">
-          <label>Start</label>
-          <input type="time" id="startTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" />
-        </div>
-        <div style="flex:1">
-          <label>Koniec</label>
-          <input type="time" id="endTime" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin-top:6px" />
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button id="saveAdd" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white;font-size:16px;cursor:pointer">Dodaj nawyk</button>
-        <button id="cancelAdd" style="flex:0 0 60px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted);">Anuluj</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CONFIRM DELETE -->
-  <div class="confirm-backdrop" id="confirmBackdrop">
-    <div class="confirm-box" id="confirmBox">
-      <div class="confirm-title" id="confirmTitle">Usuń nawyk?</div>
-      <div class="confirm-text" id="confirmText">Co zrobić z tym nawykiem?</div>
-      <div class="confirm-btns" id="confirmBtns"></div>
-    </div>
-  </div>
-
-  <!-- AUTH MODAL -->
-  <div class="modal-backdrop" id="authBackdrop">
-    <div class="modal">
-      <h3>Zaloguj się</h3>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <button id="googleSign" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:#4285f4;color:white">Zaloguj przez Google</button>
-        <button id="showEmail" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Email</button>
-      </div>
-
-      <div id="emailForm" style="display:none;flex-direction:column;gap:8px">
-        <input id="emailInput" class="email-input" placeholder="Email" />
-        <input id="passInput" class="email-input" placeholder="Hasło" type="password" />
-
-        <div style="display:flex;gap:8px">
-          <button id="emailSignUp" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white">Zarejestruj</button>
-          <button id="emailSignIn" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Zaloguj</button>
-        </div>
-      </div>
-
-      <button id="authClose" class="link-like" style="margin-top:10px">Zamknij</button>
-    </div>
-  </div>
-
-  
-    <script type="module">
+<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import {
     getAuth,
@@ -334,9 +114,25 @@
   function iso(d){ return d.toISOString().slice(0,10); }
   function dayIdxFromDate(d){ return (d.getDay()+6)%7; } // Mon=0..Sun=6
 
+  /* ========== INJECT MINIMAL STYLES FOR ANIMATIONS (safe to include in script) ======== */
+  (function injectStyles(){
+    const s = document.createElement('style');
+    s.textContent = `
+      /* small helpers used by animation code */
+      .flash-done { box-shadow: 0 6px 30px rgba(0,0,0,0.12); transform-origin: center; }
+      .habit-card { transition: transform .28s cubic-bezier(.2,.9,.3,1), box-shadow .28s; will-change: transform, box-shadow; overflow: visible; position: relative; }
+      .check { transition: transform .26s cubic-bezier(.2,.9,.3,1), background-color .2s, color .2s; will-change: transform; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+      .check.filled { transform: scale(1); }
+      .ripple { position:absolute; border-radius:50%; pointer-events:none; transform:scale(0); opacity:.9; }
+      #confetti-canvas { position: fixed; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:9999; mix-blend-mode: normal; }
+      #motivPopup { transition: transform .36s cubic-bezier(.2,.9,.3,1), opacity .36s; }
+      .particle { position: absolute; pointer-events:none; will-change: transform, opacity; }
+    `;
+    document.head.appendChild(s);
+  })();
+
   /* ========== UTILS: merge server + optimistic ======== */
   function mergeServerAndOptimistic(server, optimistic){
-    // server and optimistic are objects keyed by date -> map
     const merged = {...server};
     for(const date in optimistic){
       merged[date] = {...(merged[date]||{}), ...(optimistic[date]||{})};
@@ -428,8 +224,8 @@
       await signInWithPopup(auth, provider);
       authBackdrop.style.display='none';
     } catch(e){
-      console.error('Błąd logowania Google:', e);
-      alert('Błąd logowania Google: '+(e.message||e));
+      console.error('Google sign-in error:', e);
+      alert('Google sign-in error: '+(e.message||e));
     }
   };
   emailSignUp.onclick = async ()=>{ 
@@ -468,7 +264,6 @@
         newCache.push(data);
       });
       habitsCache = newCache;
-      console.log('habits snapshot', habitsCache);
       renderDay();
     }, err=>{ console.error('habits onSnapshot err', err); });
 
@@ -481,10 +276,8 @@
         const d = ds.data();
         if(d && d.date && d.map) comps[d.date] = d.map;
       });
-      // keep server copy and merge with optimistic local toggles
       serverCompletions = comps;
       completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
-      console.log('completions snapshot (merged)', completionsCache);
       renderDay();
     }, err=>{ console.error('comps onSnapshot err', err); });
   }
@@ -507,7 +300,6 @@
       console.error('addHabitToServer err', e);
       throw e;
     }
-    // onSnapshot will update local habitsCache
   }
 
   async function deleteHabitOnServer(docId){
@@ -540,17 +332,13 @@
     const u = requireUserOrThrow();
     try{
       const docRef = doc(db, `users/${u.uid}/completions`, dateIso);
-      // merge optimistic with server by reading current server copy in memory (serverCompletions)
       const existing = serverCompletions[dateIso] ? {...serverCompletions[dateIso]} : {};
-      // Apply optimistic pending flips where present
       existing[habitDocId] = !existing[habitDocId];
       await setDoc(docRef, { userId: u.uid, date: dateIso, map: existing }, { merge: true });
       console.log('toggled completion (server)', habitDocId, dateIso, existing[habitDocId]);
     }catch(e){
       console.error('toggleCompletionServer err', e);
       throw e;
-    } finally {
-      // no-op: optimisticCompletions will be reconciled when snapshot arrives
     }
   }
 
@@ -570,15 +358,13 @@
 
   function renderDay(){
     const list = habitsList; list.innerHTML='';
-    // ensure completionsCache visible is merged latest
     completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
     const items = (habitsCache||[]).filter(h=>matches(h,currentDate)).sort((a,b)=> (a.start||'').localeCompare(b.start||'') || (a.name||'').localeCompare(b.name||''));
     emptyState.style.display = items.length ? 'none' : 'block';
     let idx = 0;
     items.forEach(h=>{
       const card = document.createElement('div'); card.className='habit-card';
-      // pop-in animation
-      try{ card.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:280, easing:'cubic-bezier(.2,.9,.3,1)', delay: idx*40}); }catch(e){}
+      try{ card.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:320, easing:'cubic-bezier(.2,.9,.3,1)', delay: idx*36}); }catch(e){}
       idx++;
 
       const docId = h._docId || h.id || '';
@@ -586,18 +372,21 @@
       const row = document.createElement('div'); row.className='habit-row';
 
       const check = document.createElement('div'); check.className='check'; check.style.color = h.color || selectedColor;
+      check.style.borderRadius = '8px'; check.style.width = '36px'; check.style.height = '36px';
+      check.style.display = 'flex'; check.style.alignItems='center'; check.style.justifyContent='center';
+      check.style.fontSize = '18px';
       if(completionsCache[iso(currentDate)]?.[docId]) check.classList.add('filled');
 
-      // single toggle handler (debounced short) to avoid accidental double triggers
+      // single toggle handler (debounced short)
       let lastToggle = 0;
-      const TOGGLE_DEBOUNCE_MS = 250;
+      const TOGGLE_DEBOUNCE_MS = 300;
       const doToggle = (e)=>{
         if(e && e.stopPropagation) e.stopPropagation();
         const now = Date.now();
-        if(now - lastToggle < TOGGLE_DEBOUNCE_MS) return; // ignore rapid double events
+        if(now - lastToggle < TOGGLE_DEBOUNCE_MS) return;
         lastToggle = now;
         toggleDone(docId);
-        animateDoneVisual(card,check,docId);
+        animateDoneVisual(card,check,docId,h);
       };
       check.addEventListener('click', doToggle, {passive:true});
 
@@ -605,6 +394,9 @@
       enableSwipe(row, ()=>{ doToggle(); });
 
       const icon = document.createElement('div'); icon.className='icon'; icon.textContent = h.icon || '🏃'; icon.style.background = (h.color||selectedColor)+'22';
+      icon.style.display='flex'; icon.style.alignItems='center'; icon.style.justifyContent='center'; icon.style.width='44px'; icon.style.height='44px';
+      icon.style.borderRadius='10px'; icon.style.fontSize='20px';
+
       const meta = document.createElement('div'); meta.className='meta';
       meta.innerHTML = `<div class='title'>${escapeHtml(h.name)}</div><div class='time'>${h.start? h.start : ''}${h.end? ' — '+h.end : ''}</div>`;
       if(completionsCache[iso(currentDate)]?.[docId]) meta.classList.add('done');
@@ -621,76 +413,154 @@
     });
   }
 
-  /* ========== ANIMATIONS, MOTIVATION & UI FEEDBACK ======== */
+  /* ========== ANIMATIONS, MOTIVATION & UI FEEDBACK (IMPROVED) ======== */
+  const SHOW_MOTIVATION = true; // set to false to hide messages
   const MOTIVATION_MSGS = [
-    "Świetna robota! 💪",
-    "Tak trzymaj! 🔥",
-    "Dobra robota! ✔️",
-    "Krok bliżej celu! 🎯",
-    "Robisz postępy! 🌟"
+    "Great job!",
+    "Keep it up!",
+    "Nice progress!",
+    "One step closer!",
+    "You're doing awesome!"
   ];
 
+  // create confetti canvas
+  const confettiCanvas = document.createElement('canvas');
+  confettiCanvas.id = 'confetti-canvas';
+  confettiCanvas.width = innerWidth;
+  confettiCanvas.height = innerHeight;
+  document.body.appendChild(confettiCanvas);
+  let confettiCtx = confettiCanvas.getContext('2d');
+  let confettiParticles = [];
+  let confettiRunning = false;
+  window.addEventListener('resize', ()=>{ confettiCanvas.width = innerWidth; confettiCanvas.height = innerHeight; confettiCtx = confettiCanvas.getContext('2d'); });
+
+  function spawnConfettiBurst(xPct=50, yPct=80, count=26, baseColor){
+    // xPct, yPct relative percentages of viewport (0-100)
+    const startX = confettiCanvas.width * (xPct/100);
+    const startY = confettiCanvas.height * (yPct/100);
+    const colors = baseColor ? [baseColor, '#f59e0b','#10b981','#ef4444','#3b82f6'] : ['#f59e0b','#10b981','#ef4444','#3b82f6','#a855f7','#06b6d4'];
+    for(let i=0;i<count;i++){
+      const angle = (Math.PI * (Math.random()*1.2 - 0.6)); // spread
+      const speed = 2 + Math.random()*6;
+      confettiParticles.push({
+        x: startX,
+        y: startY,
+        vx: Math.cos(angle)*speed*(0.6 + Math.random()),
+        vy: Math.sin(angle)*speed*(0.6 + Math.random()) - 2,
+        rot: Math.random()*360,
+        vr: (Math.random()-0.5)*18,
+        size: 6 + Math.random()*10,
+        color: colors[Math.floor(Math.random()*colors.length)],
+        life: 60 + Math.random()*40
+      });
+    }
+    if(!confettiRunning) runConfetti();
+  }
+
+  function runConfetti(){
+    confettiRunning = true;
+    const loop = ()=>{
+      confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+      for(let i = confettiParticles.length - 1; i >= 0; i--){
+        const p = confettiParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.12; // gravity
+        p.vx *= 0.995;
+        p.rot += p.vr;
+        p.life--;
+        confettiCtx.save();
+        confettiCtx.translate(p.x, p.y);
+        confettiCtx.rotate(p.rot * Math.PI/180);
+        confettiCtx.fillStyle = p.color;
+        confettiCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+        confettiCtx.restore();
+        if(p.y > confettiCanvas.height + 80 || p.life <= 0){
+          confettiParticles.splice(i,1);
+        }
+      }
+      if(confettiParticles.length > 0){
+        requestAnimationFrame(loop);
+      } else {
+        confettiRunning = false;
+        confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+      }
+    };
+    requestAnimationFrame(loop);
+  }
+
   function showMotivationOneShot(){
-    // pick random message
+    if(!SHOW_MOTIVATION) return;
     const msg = MOTIVATION_MSGS[Math.floor(Math.random()*MOTIVATION_MSGS.length)];
     if(!motivPopup) return;
     motivPopup.textContent = msg;
+    motivPopup.style.opacity = '0';
+    motivPopup.style.transform = 'translateY(10px) scale(.96)';
     motivPopup.classList.add('show');
-    // small emoji burst
-    spawnEmojiBurst();
-    setTimeout(()=>{ motivPopup.classList.remove('show'); }, 1200);
+    requestAnimationFrame(()=>{
+      motivPopup.style.transition = 'transform .42s cubic-bezier(.2,.9,.3,1), opacity .42s';
+      motivPopup.style.opacity = '1';
+      motivPopup.style.transform = 'translateY(0px) scale(1)';
+    });
+    setTimeout(()=>{ motivPopup.style.opacity='0'; motivPopup.style.transform='translateY(10px) scale(.96)'; setTimeout(()=>motivPopup.classList.remove('show'),420); }, 1200);
   }
 
-  function spawnEmojiBurst(){
-    // simple floating emoji particles near bottom of popup
-    const emojis = ['✨','🎉','⭐','💥','👏'];
-    const container = document.body;
-    for(let i=0;i<6;i++){
-      const el = document.createElement('div');
-      el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
-      el.style.position='fixed';
-      el.style.left = (50 + (Math.random()*160 - 80)) + '%';
-      el.style.bottom = (160 + Math.random()*30) + 'px';
-      el.style.transform = `translateX(-50%)`;
-      el.style.fontSize = (12 + Math.random()*16) + 'px';
-      el.style.opacity = '1';
-      el.style.zIndex = 999;
-      document.body.appendChild(el);
-      const vy = 1 + Math.random()*2;
-      el.animate([
-        { transform: `translateX(-50%) translateY(0)`, opacity:1 },
-        { transform: `translateX(-50%) translateY(-60px)`, opacity:0 }
-      ], { duration: 900 + Math.random()*400, easing: 'cubic-bezier(.2,.9,.3,1)'});
-      setTimeout(()=>{ try{ el.remove(); }catch(e){} }, 1400);
+  function animateDoneVisual(card, check, id, habit){
+    const dateIso = iso(currentDate);
+    const filled = !!(completionsCache[dateIso]?.[id]);
+    // ripple behind the check
+    const rect = card.getBoundingClientRect();
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    ripple.style.width = '20px';
+    ripple.style.height = '20px';
+    ripple.style.left = (rect.left + rect.width/2 - 10) + 'px';
+    ripple.style.top = (rect.top + rect.height/2 - 10) + 'px';
+    ripple.style.background = (habit?.color || selectedColor) + '55';
+    ripple.style.position = 'fixed';
+    ripple.style.zIndex = 9998;
+    ripple.style.transform = 'scale(0)';
+    ripple.style.opacity = '0.9';
+    ripple.style.borderRadius = '50%';
+    document.body.appendChild(ripple);
+    ripple.animate([
+      { transform: 'scale(0)', opacity: 0.9 },
+      { transform: 'scale(6)', opacity: 0.14 }
+    ], { duration: 520, easing: 'cubic-bezier(.2,.9,.3,1)' });
+    setTimeout(()=>{ try{ ripple.remove(); }catch(e){} }, 560);
+
+    // check mark/fling animation
+    try{
+      if(filled){
+        check.animate([{ transform: 'scale(.92)' }, { transform: 'scale(1.28)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1)' });
+        card.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }], { duration: 520, easing: 'cubic-bezier(.2,.9,.3,1)' });
+        card.classList.add('flash-done');
+        setTimeout(()=>card.classList.remove('flash-done'),900);
+        // confetti burst near the card: compute center pct
+        const centerX = (rect.left + rect.width/2) / window.innerWidth * 100;
+        const centerY = (rect.top + rect.height/2) / window.innerHeight * 100;
+        spawnConfettiBurst(centerX, centerY, 26, habit?.color);
+        showMotivationOneShot();
+      } else {
+        // unfill animation
+        check.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(.96)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(.2,.9,.3,1)' });
+      }
+    }catch(e){
+      console.warn('animateDoneVisual err', e);
     }
   }
 
-  function animateDoneVisual(card,check,id){
-    const filled = !!(completionsCache[iso(currentDate)]?.[id]);
-    if(filled){
-      check.classList.add('filled');
-      try{ check.animate([{transform:'scale(1)'},{transform:'scale(1.26)'},{transform:'scale(1)'}],{duration:420,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){}
-      try{ card.animate([{transform:'translateY(0)'},{transform:'translateY(-8px)'},{transform:'translateY(0)'}],{duration:520,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){}
-      card.classList.add('flash-done');
-      setTimeout(()=>card.classList.remove('flash-done'),900);
-      // show motivational popup
-      showMotivationOneShot();
-    } else {
-      check.classList.remove('filled');
-      card.classList.remove('flash-done');
-    }
-  }
-
-  /* ========== SWIPE SUPPORT (IMPROVED) ======== */
+  /* ========== SWIPE SUPPORT (IMPROVED & LIGHTWEIGHT) ======== */
   function enableSwipe(el, action){
-    let sx=0,cx=0,drag=false, isMouse=false;
-    const onTouchStart = (e)=>{ drag=true; isMouse=false; sx = e.touches[0].clientX; el.style.transition='none'; };
+    let sx=0,cx=0,drag=false, isMouse=false, lastTime=0;
+    const THRESHOLD = 90;
+    const onTouchStart = (e)=>{ drag=true; isMouse=false; sx = e.touches[0].clientX; el.style.transition='none'; lastTime = Date.now(); };
     const onTouchMove = (e)=>{ if(!drag) return; cx = e.touches[0].clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; };
-    const onTouchEnd = ()=>{ el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); drag=false; cx=0; };
+    const onTouchEnd = ()=>{ el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>THRESHOLD) action(); drag=false; cx=0; };
 
-    const onMouseDown = (e)=>{ drag=true; isMouse=true; sx=e.clientX; el.style.transition='none'; };
+    const onMouseDown = (e)=>{ drag=true; isMouse=true; sx=e.clientX; el.style.transition='none'; lastTime = Date.now(); };
     const onMouseMove = (e)=>{ if(!drag || !isMouse) return; cx = e.clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; };
-    const onMouseUp = ()=>{ if(!drag) return; drag=false; isMouse=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); cx=0; };
+    const onMouseUp = ()=>{ if(!drag) return; drag=false; isMouse=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>THRESHOLD) action(); cx=0; };
 
     el.addEventListener('touchstart', onTouchStart, {passive:true});
     el.addEventListener('touchmove', onTouchMove, {passive:true});
@@ -708,9 +578,9 @@
   saveAdd.onclick = async ()=>{
     try{
       const u = auth.currentUser;
-      if(!u) return alert('Zaloguj się aby dodawać nawyki.');
+      if(!u) return alert('Please sign in to add habits.');
 
-      const name = habitNameInput.value.trim() || 'Nawyk';
+      const name = habitNameInput.value.trim() || 'Habit';
       const desc = habitDescInput.value.trim() || '';
       const start = startTimeInput.value || '';
       const end = endTimeInput.value || '';
@@ -720,13 +590,11 @@
       if(rec==='repeat') base.days = [...selectedDays];
       if(rec==='daily') base.days=[0,1,2,3,4,5,6];
 
-      // write to server directly
       await addHabitToServer(base);
       modalBackdrop.style.display='none';
-      // onSnapshot will update UI
     }catch(e){
       console.error('saveAdd err', e);
-      alert('Błąd zapisu: ' + (e.message||e));
+      alert('Save error: ' + (e.message||e));
     }
   };
 
@@ -734,30 +602,24 @@
   function toggleDone(habitDocId){
     try{
       const u = auth.currentUser;
-      if(!u){ return alert('Zaloguj się, aby oznaczać wykonanie.'); }
+      if(!u){ return alert('Please sign in to mark completions.'); }
       const dateIso = iso(currentDate);
 
-      // prepare maps
       completionsCache[dateIso] = completionsCache[dateIso] || {};
       optimisticCompletions[dateIso] = optimisticCompletions[dateIso] || {};
 
-      // optimistic flip
       const newVal = !completionsCache[dateIso][habitDocId];
       completionsCache[dateIso][habitDocId] = newVal;
       optimisticCompletions[dateIso][habitDocId] = newVal;
 
-      // reflect immediately
       renderDay();
 
-      // send to server
       toggleCompletionServer(habitDocId, dateIso).catch(err=>{
         console.error('toggle comp error', err);
-        // on error, revert optimistic change (best-effort)
         optimisticCompletions[dateIso][habitDocId] = serverCompletions[dateIso]?.[habitDocId] ?? undefined;
-        // rebuild merged view
         completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
         renderDay();
-        alert('Błąd zapisu wykonania.');
+        alert('Error saving completion.');
       });
     }catch(e){ console.error(e); }
   }
@@ -766,42 +628,42 @@
   let deleteContext = null;
   function showDeleteModal(h, element){
     deleteContext = { h, element };
-    confirmTitle.textContent = `Usuń nawyk "${h.name}"?`;
-    confirmText.textContent = h.recurrence === 'once' ? 'Usunąć ten nawyk?' : 'Usuń tylko dziś (wyjątek) czy na stałe?';
+    confirmTitle.textContent = `Delete "${h.name}"?`;
+    confirmText.textContent = h.recurrence === 'once' ? 'Remove this habit?' : 'Remove only today (add exclusion) or permanently?';
     confirmBtns.innerHTML = '';
-    const btnCancel = document.createElement('button'); btnCancel.className='cbtn cbtn-cancel'; btnCancel.innerHTML='<span class="small-ico">✖</span>Anuluj';
+    const btnCancel = document.createElement('button'); btnCancel.className='cbtn cbtn-cancel'; btnCancel.innerHTML='<span class="small-ico">✖</span>Cancel';
     btnCancel.onclick = ()=>{ confirmBackdrop.style.display='none'; deleteContext=null; };
     confirmBtns.appendChild(btnCancel);
 
     if(h.recurrence === 'once'){
-      const btnDelete = document.createElement('button'); btnDelete.className='cbtn cbtn-all'; btnDelete.innerHTML='<span class="small-ico">🗑️</span>Usuń';
+      const btnDelete = document.createElement('button'); btnDelete.className='cbtn cbtn-all'; btnDelete.innerHTML='<span class="small-ico">🗑️</span>Delete';
       btnDelete.onclick = async ()=>{
         confirmBackdrop.style.display='none';
         try{
-          if(!h._docId) throw new Error('Brak id dokumentu - nie można usunąć.');
+          if(!h._docId) throw new Error('Missing id');
           await deleteHabitOnServer(h._docId);
-        }catch(e){ console.error(e); alert('Błąd usuwania'); }
+        }catch(e){ console.error(e); alert('Deletion error'); }
         deleteContext=null;
       };
       confirmBtns.appendChild(btnDelete);
     } else {
-      const btnOnly = document.createElement('button'); btnOnly.className='cbtn cbtn-only'; btnOnly.innerHTML='<span class="small-ico">🗓️</span>Tylko dziś';
+      const btnOnly = document.createElement('button'); btnOnly.className='cbtn cbtn-only'; btnOnly.innerHTML='<span class="small-ico">🗓️</span>Only today';
       btnOnly.onclick = async ()=>{
         confirmBackdrop.style.display='none';
         const dayIso = iso(currentDate);
         try{
-          if(!h._docId) throw new Error('Brak id dokumentu - nie można dodać wyjątku.');
+          if(!h._docId) throw new Error('Missing id');
           await addExclusionOnServer(h._docId, dayIso);
-        }catch(e){ console.error(e); alert('Błąd'); }
+        }catch(e){ console.error(e); alert('Error'); }
         deleteContext=null;
       };
-      const btnAll = document.createElement('button'); btnAll.className='cbtn cbtn-all'; btnAll.innerHTML='<span class="small-ico">🗑️</span>Usuń na stałe';
+      const btnAll = document.createElement('button'); btnAll.className='cbtn cbtn-all'; btnAll.innerHTML='<span class="small-ico">🗑️</span>Delete permanently';
       btnAll.onclick = async ()=>{
         confirmBackdrop.style.display='none';
         try{
-          if(!h._docId) throw new Error('Brak id dokumentu - nie można usunąć.');
+          if(!h._docId) throw new Error('Missing id');
           await deleteHabitOnServer(h._docId);
-        }catch(e){ console.error(e); alert('Błąd'); }
+        }catch(e){ console.error(e); alert('Error'); }
         deleteContext=null;
       };
       confirmBtns.appendChild(btnOnly); confirmBtns.appendChild(btnAll);
@@ -814,10 +676,8 @@
     console.log('onAuthStateChanged:', u ? u.uid : null);
     renderAuthUI();
     if(u){
-      // start realtime sync for this user
       startRealtimeSync(u.uid);
     } else {
-      // stop listeners & clear caches
       if(typeof unsubHab === 'function') try{ unsubHab(); }catch(e){}
       if(typeof unsubComp === 'function') try{ unsubComp(); }catch(e){}
       habitsCache = [];
@@ -833,7 +693,7 @@
     [navHome, navEvents, navSettings].forEach(n=>n.classList.remove('active'));
     if(el) el.classList.add('active');
   }
-  navHome.onclick = ()=>{ setActiveNav(navHome); /* stay on home */ };
+  navHome.onclick = ()=>{ setActiveNav(navHome); };
   navEvents.onclick = ()=>{ setActiveNav(navEvents); window.location.href = 'events.html'; };
   navSettings.onclick = ()=>{ setActiveNav(navSettings); window.location.href = 'settings.html'; };
 
@@ -852,8 +712,4 @@
     return s.replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
   }
 
-
-  </script>
-
-</body>
-</html>
+</script>
