@@ -5,20 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HabitMaster — Dayo (Firebase)</title>
   <meta name="theme-color" content="#071428" />
+
   <style>
     :root{
       --bg:#071022; --muted:#9bb0cf; --glass:rgba(255,255,255,0.03);
       --accent1:#7c3aed; --accent2:#06b6d4; --radius:14px;
       --shadow:0 14px 36px rgba(2,6,23,0.6);
       --fast:180ms; --mid:320ms; --slow:520ms;
+      --nav-bg:#0a152b;
     }
     *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%, #041428 100%);color:#eaf3ff;-webkit-font-smoothing:antialiased}
+
+    /* HEADER */
     .header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.02);position:sticky;top:0;z-index:40}
     .today-date{font-weight:700}
     .user-bubble{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:999px;font-size:13px}
     .sign-btn{background:none;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
 
+    /* WEEK BAR */
     .weekbar{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);backdrop-filter:blur(6px);box-shadow:var(--shadow);position:sticky;top:56px;z-index:30}
     .week-arrow{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,0.03);cursor:pointer}
     .week-strip{display:flex;flex:1;gap:8px}
@@ -26,7 +31,8 @@
     .week-col .num{display:block;font-size:18px;font-weight:700;color:#fff}
     .week-col.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;transform:translateY(-4px);box-shadow:0 8px 22px rgba(12,30,100,0.45)}
 
-    .app{padding:16px;padding-bottom:140px}
+    /* APP */
+    .app{padding:16px;padding-bottom:180px}
     .habit-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);box-shadow:0 6px 20px rgba(0,0,0,0.5);margin-bottom:12px;transition:transform var(--mid),opacity var(--mid),filter var(--mid);touch-action:pan-y;overflow:hidden}
     .habit-card.done{opacity:.5;filter:grayscale(.2);text-decoration:line-through}
     .habit-row{display:flex;align-items:center;gap:12px;width:100%}
@@ -40,9 +46,20 @@
     .habit-extra{font-size:13px;color:#b7cde6;padding:8px 6px 0 6px;display:none}
     .habit-card.expanded .habit-extra{display:block}
 
-    .fab{position:fixed;right:18px;bottom:96px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,var(--accent1),var(--accent2));border:none;color:white;box-shadow:var(--shadow);cursor:pointer}
+    /* FAB */
+    .fab{position:fixed;right:18px;bottom:120px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,var(--accent1),var(--accent2));border:none;color:white;box-shadow:var(--shadow);cursor:pointer;z-index:50}
 
-    /* modal: vertical scrollable on small screens */
+    /* MOTIVATION POPUP */
+    .motiv-popup{
+      position:fixed;left:50%;bottom:160px;transform:translateX(-50%) translateY(20px);
+      background:linear-gradient(135deg,var(--accent1),var(--accent2));
+      padding:14px 22px;border-radius:12px;font-size:18px;font-weight:700;
+      opacity:0;transition:all .4s ease;pointer-events:none;z-index:80;
+      box-shadow:0 10px 30px rgba(0,0,0,0.45);
+    }
+    .motiv-popup.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* MODALS */
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
     .modal{width:100%;max-width:540px;background:#071428;border-radius:14px;padding:16px;box-shadow:var(--shadow);max-height:84vh;overflow:auto}
     .icon-grid,.color-grid{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
@@ -51,33 +68,48 @@
     .color-choice{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .2s}
     .color-choice.active{box-shadow:0 6px 18px rgba(0,0,0,0.5);transform:translateY(-4px)}
 
+    /* CONFIRM BOX */
     .confirm-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:70}
     .confirm-box{background:#071428;border-radius:14px;padding:18px;box-shadow:var(--shadow);width:92%;max-width:420px;color:white;text-align:center}
-    .confirm-title{font-weight:700;margin-bottom:6px}
-    .confirm-text{color:#b7cde6;font-size:14px}
     .confirm-btns{display:flex;gap:12px;margin-top:16px}
     .cbtn{flex:1;padding:12px;border-radius:12px;font-weight:700;border:none;cursor:pointer}
-    .cbtn-cancel{background:rgba(255,255,255,0.04);color:#eaf3ff}
-    .cbtn-only{background:rgba(255,255,255,0.06);color:#eaf3ff}
-    .cbtn-all{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff}
 
-    .login-panel{padding:18px;display:flex;flex-direction:column;gap:8px}
-    .small{font-size:13px;padding:8px 10px;border-radius:10px}
-    .email-input{padding:10px;border-radius:10px;border:none;background:#0b1220;color:white}
-    .link-like{background:none;border:0;color:var(--accent2);cursor:pointer}
-    .status-row{display:flex;gap:8px;align-items:center}
-    .flash-done{animation:flashDone var(--slow) ease both}
-    @keyframes flashDone{0%{box-shadow:0 0 0 rgba(0,0,0,0);transform:translateY(0)}30%{transform:translateY(-6px) scale(1.02)}60%{transform:translateY(0) scale(1)}100%{box-shadow:0 18px 40px rgba(0,0,0,0.45)}}
+    /* AUTH */
     .small-ico{font-size:14px;margin-right:6px}
+
+    /* BOTTOM NAV */
+    .bottom-nav{
+      position:fixed;
+      bottom:20px;
+      left:50%;transform:translateX(-50%);
+      width:86%;
+      background:var(--nav-bg);
+      padding:12px 18px;
+      border-radius:22px;
+      display:flex;
+      justify-content:space-around;
+      align-items:center;
+      box-shadow:0 10px 30px rgba(0,0,0,0.4);
+      z-index:90;
+    }
+    .nav-item{
+      font-size:22px;
+      opacity:.55;
+      transition:all .25s;
+      cursor:pointer;
+    }
+    .nav-item.active{
+      opacity:1;
+      transform:translateY(-4px) scale(1.15);
+      color:var(--accent2);
+    }
   </style>
 </head>
 <body>
 
   <!-- HEADER -->
   <div class="header">
-    <div class="left">
-      <div class="today-date" id="todayDate">...</div>
-    </div>
+    <div class="left"><div class="today-date" id="todayDate">...</div></div>
     <div class="status-row" id="authRow">
       <button id="btnSignIn" class="sign-btn">Zaloguj</button>
     </div>
@@ -90,19 +122,29 @@
     <div class="week-arrow" id="nextWeek">▶</div>
   </div>
 
+  <!-- MOTIVATION POPUP -->
+  <div class="motiv-popup" id="motivPopup">Super!</div>
+
   <!-- APP -->
   <div class="app" id="dayView">
     <div id="habitsList"></div>
     <div id="emptyState" style="opacity:.6;text-align:center;margin-top:20px">Brak nawyków</div>
   </div>
 
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="navHome">🏠</div>
+    <div class="nav-item" id="navEvents">📅</div>
+    <div class="nav-item" id="navSettings">⚙️</div>
+  </div>
+
   <!-- FAB -->
   <button class="fab" id="openAdd" title="Dodaj nawyk">＋</button>
 
-  <!-- ADD MODAL (scrollable) -->
+  <!-- ADD MODAL -->
   <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" id="addModal">
-      <h3 style="margin:6px 0">Dodaj nawyk</h3>
+    <div class="modal" id="addModal">
+      <h3>Dodaj nawyk</h3>
 
       <label>Nazwa</label>
       <input id="habitName" placeholder="Np. Ćwiczenia" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none;margin:8px 0" />
@@ -143,9 +185,9 @@
     </div>
   </div>
 
-  <!-- CONFIRM DELETE (custom) -->
+  <!-- CONFIRM DELETE -->
   <div class="confirm-backdrop" id="confirmBackdrop">
-    <div class="confirm-box" id="confirmBox" role="dialog" aria-modal="true">
+    <div class="confirm-box" id="confirmBox">
       <div class="confirm-title" id="confirmTitle">Usuń nawyk?</div>
       <div class="confirm-text" id="confirmText">Co zrobić z tym nawykiem?</div>
       <div class="confirm-btns" id="confirmBtns"></div>
@@ -154,29 +196,29 @@
 
   <!-- AUTH MODAL -->
   <div class="modal-backdrop" id="authBackdrop">
-    <div class="modal" role="dialog" aria-modal="true">
-      <h3 style="margin:6px 0">Zaloguj się</h3>
+    <div class="modal">
+      <h3>Zaloguj się</h3>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
         <button id="googleSign" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:#4285f4;color:white">Zaloguj przez Google</button>
         <button id="showEmail" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Email</button>
       </div>
 
       <div id="emailForm" style="display:none;flex-direction:column;gap:8px">
-        <input id="emailInput" class="email-input" placeholder="Email" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none" />
-        <input id="passInput" class="email-input" placeholder="Hasło" type="password" style="width:100%;padding:10px;border-radius:10px;background:#041826;color:white;border:none" />
+        <input id="emailInput" class="email-input" placeholder="Email" />
+        <input id="passInput" class="email-input" placeholder="Hasło" type="password" />
+
         <div style="display:flex;gap:8px">
           <button id="emailSignUp" class="small" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:white">Zarejestruj</button>
           <button id="emailSignIn" class="small" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:none;color:var(--muted)">Zaloguj</button>
         </div>
       </div>
 
-      <div style="font-size:13px;color:#9fb2d1;margin-top:6px">Zaloguj się aby synchronizować nawyki między urządzeniami.</div>
       <button id="authClose" class="link-like" style="margin-top:10px">Zamknij</button>
     </div>
   </div>
 
-  <!-- FIREBASE SDK (modular) -->
-<script type="module">
+  
+    <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import {
     getAuth,
@@ -266,12 +308,24 @@
   const confirmText = document.getElementById('confirmText');
   const confirmBtns = document.getElementById('confirmBtns');
 
+  const motivPopup = document.getElementById('motivPopup');
+  const navHome = document.getElementById('navHome');
+  const navEvents = document.getElementById('navEvents');
+  const navSettings = document.getElementById('navSettings');
+
   // caches populated from Firestore snapshots
   let habitsCache = [];
-  let completionsCache = {}; // { 'YYYY-MM-DD': { habitId: true } }
+  let completionsCache = {}; // merged view (server merged with optimistic)
+  let serverCompletions = {}; // last received from server
 
-  // pickers
-  const ICONS = ['🏃','📚','🧘','💪','🛌','☕','🍎','🧹','🚰','🎧','🎯','🎨','🧩','🚴','🏊','🏋️‍♂️','🖥️','✍️','📅','🎵'];
+  // optimistic local toggles: { 'YYYY-MM-DD': { habitId: true/false } }
+  let optimisticCompletions = {};
+
+  // pickers - expanded icon set
+  const ICONS = [
+    '🏃','🚿','🚴','🏊','🏋️‍♂️','🧘','🛌','☕','🍎','🍽️','🧹','🧺','🧻','🧼',
+    '🪥','💊','📚','✍️','🖥️','📅','🎵','🎧','🎯','🎨','🧩','💼','🛒','🚗','🌱','🧑‍🍳','🪴','🔧','🪑','🧯','🛠️','🧑‍🔬','🧑‍🏫'
+  ];
   const COLORS = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#06b6d4','#fb7185','#10b981','#f97316','#8b5cf6','#0ea5a4','#f43f5e'];
   let selectedIcon = ICONS[0];
   let selectedColor = COLORS[0];
@@ -279,6 +333,16 @@
 
   function iso(d){ return d.toISOString().slice(0,10); }
   function dayIdxFromDate(d){ return (d.getDay()+6)%7; } // Mon=0..Sun=6
+
+  /* ========== UTILS: merge server + optimistic ======== */
+  function mergeServerAndOptimistic(server, optimistic){
+    // server and optimistic are objects keyed by date -> map
+    const merged = {...server};
+    for(const date in optimistic){
+      merged[date] = {...(merged[date]||{}), ...(optimistic[date]||{})};
+    }
+    return merged;
+  }
 
   /* ========== UI: Week bar & Today ======== */
   function renderTodayDate(){
@@ -417,8 +481,10 @@
         const d = ds.data();
         if(d && d.date && d.map) comps[d.date] = d.map;
       });
-      completionsCache = comps;
-      console.log('completions snapshot', completionsCache);
+      // keep server copy and merge with optimistic local toggles
+      serverCompletions = comps;
+      completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
+      console.log('completions snapshot (merged)', completionsCache);
       renderDay();
     }, err=>{ console.error('comps onSnapshot err', err); });
   }
@@ -474,13 +540,17 @@
     const u = requireUserOrThrow();
     try{
       const docRef = doc(db, `users/${u.uid}/completions`, dateIso);
-      const existing = completionsCache[dateIso] ? {...completionsCache[dateIso]} : {};
+      // merge optimistic with server by reading current server copy in memory (serverCompletions)
+      const existing = serverCompletions[dateIso] ? {...serverCompletions[dateIso]} : {};
+      // Apply optimistic pending flips where present
       existing[habitDocId] = !existing[habitDocId];
       await setDoc(docRef, { userId: u.uid, date: dateIso, map: existing }, { merge: true });
-      console.log('toggled completion', habitDocId, dateIso, existing[habitDocId]);
+      console.log('toggled completion (server)', habitDocId, dateIso, existing[habitDocId]);
     }catch(e){
       console.error('toggleCompletionServer err', e);
       throw e;
+    } finally {
+      // no-op: optimisticCompletions will be reconciled when snapshot arrives
     }
   }
 
@@ -500,21 +570,43 @@
 
   function renderDay(){
     const list = habitsList; list.innerHTML='';
+    // ensure completionsCache visible is merged latest
+    completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
     const items = (habitsCache||[]).filter(h=>matches(h,currentDate)).sort((a,b)=> (a.start||'').localeCompare(b.start||'') || (a.name||'').localeCompare(b.name||''));
     emptyState.style.display = items.length ? 'none' : 'block';
+    let idx = 0;
     items.forEach(h=>{
       const card = document.createElement('div'); card.className='habit-card';
+      // pop-in animation
+      try{ card.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:280, easing:'cubic-bezier(.2,.9,.3,1)', delay: idx*40}); }catch(e){}
+      idx++;
+
       const docId = h._docId || h.id || '';
       if(completionsCache[iso(currentDate)]?.[docId]) card.classList.add('done');
       const row = document.createElement('div'); row.className='habit-row';
+
       const check = document.createElement('div'); check.className='check'; check.style.color = h.color || selectedColor;
       if(completionsCache[iso(currentDate)]?.[docId]) check.classList.add('filled');
-      check.onclick = (e)=>{ e.stopPropagation(); toggleDone(docId); animateDoneVisual(card,check,docId); };
-      enableSwipe(row, ()=>{ toggleDone(docId); animateDoneVisual(card,check,docId); });
+
+      // single toggle handler (debounced short) to avoid accidental double triggers
+      let lastToggle = 0;
+      const TOGGLE_DEBOUNCE_MS = 250;
+      const doToggle = (e)=>{
+        if(e && e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if(now - lastToggle < TOGGLE_DEBOUNCE_MS) return; // ignore rapid double events
+        lastToggle = now;
+        toggleDone(docId);
+        animateDoneVisual(card,check,docId);
+      };
+      check.addEventListener('click', doToggle, {passive:true});
+
+      // enable swipe on the row — action uses same single function
+      enableSwipe(row, ()=>{ doToggle(); });
 
       const icon = document.createElement('div'); icon.className='icon'; icon.textContent = h.icon || '🏃'; icon.style.background = (h.color||selectedColor)+'22';
       const meta = document.createElement('div'); meta.className='meta';
-      meta.innerHTML = `<div class='title'>${h.name}</div><div class='time'>${h.start? h.start : ''}${h.end? ' — '+h.end : ''}</div>`;
+      meta.innerHTML = `<div class='title'>${escapeHtml(h.name)}</div><div class='time'>${h.start? h.start : ''}${h.end? ' — '+h.end : ''}</div>`;
       if(completionsCache[iso(currentDate)]?.[docId]) meta.classList.add('done');
 
       const del = document.createElement('button'); del.className='btn-del'; del.textContent='Usuń';
@@ -529,37 +621,84 @@
     });
   }
 
-  /* ========== ANIMATIONS & COMPLETION UI ======== */
-  function toggleDone(habitDocId){
-    try{
-      const u = auth.currentUser;
-      if(!u){ return alert('Zaloguj się, aby oznaczać wykonanie.'); }
-      const dateIso = iso(currentDate);
-      // optimistic visual toggle
-      completionsCache[dateIso] = completionsCache[dateIso] || {};
-      completionsCache[dateIso][habitDocId] = !completionsCache[dateIso][habitDocId];
-      renderDay();
-      toggleCompletionServer(habitDocId, dateIso).catch(err=>{
-        console.error('toggle comp error', err);
-        alert('Błąd zapisu wykonania.');
-      });
-    }catch(e){ console.error(e); }
-  }
-  function animateDoneVisual(card,check,id){
-    const filled = !!completionsCache[iso(currentDate)]?.[id];
-    if(filled){ check.classList.add('filled'); card.classList.add('flash-done'); setTimeout(()=>card.classList.remove('flash-done'),900); try{ check.animate([{transform:'scale(1)'},{transform:'scale(1.26)'},{transform:'scale(1)'}],{duration:520,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){} } else { check.classList.remove('filled'); card.classList.remove('flash-done'); }
+  /* ========== ANIMATIONS, MOTIVATION & UI FEEDBACK ======== */
+  const MOTIVATION_MSGS = [
+    "Świetna robota! 💪",
+    "Tak trzymaj! 🔥",
+    "Dobra robota! ✔️",
+    "Krok bliżej celu! 🎯",
+    "Robisz postępy! 🌟"
+  ];
+
+  function showMotivationOneShot(){
+    // pick random message
+    const msg = MOTIVATION_MSGS[Math.floor(Math.random()*MOTIVATION_MSGS.length)];
+    if(!motivPopup) return;
+    motivPopup.textContent = msg;
+    motivPopup.classList.add('show');
+    // small emoji burst
+    spawnEmojiBurst();
+    setTimeout(()=>{ motivPopup.classList.remove('show'); }, 1200);
   }
 
-  /* ========== SWIPE SUPPORT ======== */
+  function spawnEmojiBurst(){
+    // simple floating emoji particles near bottom of popup
+    const emojis = ['✨','🎉','⭐','💥','👏'];
+    const container = document.body;
+    for(let i=0;i<6;i++){
+      const el = document.createElement('div');
+      el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      el.style.position='fixed';
+      el.style.left = (50 + (Math.random()*160 - 80)) + '%';
+      el.style.bottom = (160 + Math.random()*30) + 'px';
+      el.style.transform = `translateX(-50%)`;
+      el.style.fontSize = (12 + Math.random()*16) + 'px';
+      el.style.opacity = '1';
+      el.style.zIndex = 999;
+      document.body.appendChild(el);
+      const vy = 1 + Math.random()*2;
+      el.animate([
+        { transform: `translateX(-50%) translateY(0)`, opacity:1 },
+        { transform: `translateX(-50%) translateY(-60px)`, opacity:0 }
+      ], { duration: 900 + Math.random()*400, easing: 'cubic-bezier(.2,.9,.3,1)'});
+      setTimeout(()=>{ try{ el.remove(); }catch(e){} }, 1400);
+    }
+  }
+
+  function animateDoneVisual(card,check,id){
+    const filled = !!(completionsCache[iso(currentDate)]?.[id]);
+    if(filled){
+      check.classList.add('filled');
+      try{ check.animate([{transform:'scale(1)'},{transform:'scale(1.26)'},{transform:'scale(1)'}],{duration:420,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){}
+      try{ card.animate([{transform:'translateY(0)'},{transform:'translateY(-8px)'},{transform:'translateY(0)'}],{duration:520,easing:'cubic-bezier(.2,.9,.3,1)'}); }catch(e){}
+      card.classList.add('flash-done');
+      setTimeout(()=>card.classList.remove('flash-done'),900);
+      // show motivational popup
+      showMotivationOneShot();
+    } else {
+      check.classList.remove('filled');
+      card.classList.remove('flash-done');
+    }
+  }
+
+  /* ========== SWIPE SUPPORT (IMPROVED) ======== */
   function enableSwipe(el, action){
-    let sx=0,cx=0,drag=false;
-    el.addEventListener('touchstart', e=>{ drag=true; sx = e.touches[0].clientX; el.style.transition='none'; });
-    el.addEventListener('touchmove', e=>{ if(!drag) return; cx = e.touches[0].clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; });
-    el.addEventListener('touchend', ()=>{ el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); drag=false; cx=0; });
-    let md=false;
-    el.addEventListener('mousedown', e=>{ md=true; sx=e.clientX; el.style.transition='none'; });
-    window.addEventListener('mousemove', e=>{ if(!md) return; cx = e.clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; });
-    window.addEventListener('mouseup', ()=>{ if(!md) return; md=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); cx=0; });
+    let sx=0,cx=0,drag=false, isMouse=false;
+    const onTouchStart = (e)=>{ drag=true; isMouse=false; sx = e.touches[0].clientX; el.style.transition='none'; };
+    const onTouchMove = (e)=>{ if(!drag) return; cx = e.touches[0].clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; };
+    const onTouchEnd = ()=>{ el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); drag=false; cx=0; };
+
+    const onMouseDown = (e)=>{ drag=true; isMouse=true; sx=e.clientX; el.style.transition='none'; };
+    const onMouseMove = (e)=>{ if(!drag || !isMouse) return; cx = e.clientX - sx; if(cx<0) cx=0; el.style.transform = `translateX(${cx}px)`; };
+    const onMouseUp = ()=>{ if(!drag) return; drag=false; isMouse=false; el.style.transition='transform 320ms cubic-bezier(.2,.9,.3,1)'; el.style.transform='translateX(0)'; if(cx>90) action(); cx=0; };
+
+    el.addEventListener('touchstart', onTouchStart, {passive:true});
+    el.addEventListener('touchmove', onTouchMove, {passive:true});
+    el.addEventListener('touchend', onTouchEnd, {passive:true});
+
+    el.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   }
 
   /* ========== ADD HABIT UI ======== */
@@ -590,6 +729,38 @@
       alert('Błąd zapisu: ' + (e.message||e));
     }
   };
+
+  /* ========== COMPLETION TOGGLE (optimistic) ======== */
+  function toggleDone(habitDocId){
+    try{
+      const u = auth.currentUser;
+      if(!u){ return alert('Zaloguj się, aby oznaczać wykonanie.'); }
+      const dateIso = iso(currentDate);
+
+      // prepare maps
+      completionsCache[dateIso] = completionsCache[dateIso] || {};
+      optimisticCompletions[dateIso] = optimisticCompletions[dateIso] || {};
+
+      // optimistic flip
+      const newVal = !completionsCache[dateIso][habitDocId];
+      completionsCache[dateIso][habitDocId] = newVal;
+      optimisticCompletions[dateIso][habitDocId] = newVal;
+
+      // reflect immediately
+      renderDay();
+
+      // send to server
+      toggleCompletionServer(habitDocId, dateIso).catch(err=>{
+        console.error('toggle comp error', err);
+        // on error, revert optimistic change (best-effort)
+        optimisticCompletions[dateIso][habitDocId] = serverCompletions[dateIso]?.[habitDocId] ?? undefined;
+        // rebuild merged view
+        completionsCache = mergeServerAndOptimistic(serverCompletions, optimisticCompletions);
+        renderDay();
+        alert('Błąd zapisu wykonania.');
+      });
+    }catch(e){ console.error(e); }
+  }
 
   /* ========== DELETE CONFIRM MODAL ======== */
   let deleteContext = null;
@@ -650,10 +821,21 @@
       if(typeof unsubHab === 'function') try{ unsubHab(); }catch(e){}
       if(typeof unsubComp === 'function') try{ unsubComp(); }catch(e){}
       habitsCache = [];
+      serverCompletions = {};
+      optimisticCompletions = {};
       completionsCache = {};
       renderAll();
     }
   });
+
+  /* ========== NAV BAR (bottom) ======== */
+  function setActiveNav(el){
+    [navHome, navEvents, navSettings].forEach(n=>n.classList.remove('active'));
+    if(el) el.classList.add('active');
+  }
+  navHome.onclick = ()=>{ setActiveNav(navHome); /* stay on home */ };
+  navEvents.onclick = ()=>{ setActiveNav(navEvents); window.location.href = 'events.html'; };
+  navSettings.onclick = ()=>{ setActiveNav(navSettings); window.location.href = 'settings.html'; };
 
   /* ========== RENDER ALL ======== */
   function renderAll(){ renderTodayDate(); renderWeekBar(); renderDay(); renderAuthUI(); }
@@ -663,9 +845,15 @@
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').then(()=>console.log('sw registered')).catch(()=>{});
   }
-</script>
+
+  /* ========== SMALL HELPERS ========== */
+  function escapeHtml(s){
+    if(!s) return '';
+    return s.replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
 
 
+  </script>
 
 </body>
 </html>
