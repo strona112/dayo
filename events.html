@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nawyki — 25 listopada 2025</title>
+<style>
+  :root{
+    --bg:#071224;
+    --panel:#0b2230;
+    --muted:#93a3b3;
+    --accent1: linear-gradient(90deg,#8e44ff,#2ec1ff);
+    --card:#0f2430;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  html,body{height:100%;margin:0;background: radial-gradient(ellipse at 20% 10%, rgba(10,30,40,0.75), transparent 10%),
+    linear-gradient(180deg,#061425 0%, #07182a 70%); color:#d7e6f2; -webkit-font-smoothing:antialiased;}
+  header{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 28px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  .date-main{font-size:16px; color:#dbeaf6; font-weight:600;}
+  .week-nav{display:flex; gap:8px; align-items:center;}
+  .week-nav button{background:transparent; border:0; color:var(--muted); cursor:pointer; padding:8px; border-radius:8px;}
+  .week{display:flex; gap:18px; justify-content:center; padding:14px 30px; align-items:center; border-bottom:1px solid rgba(255,255,255,0.02);}
+  .day{
+    min-width:72px; text-align:center; cursor:pointer; padding:10px 12px; border-radius:12px;
+    transition:all .2s; color:var(--muted);
+  }
+  .day.active{background:linear-gradient(90deg,#7a5bff,#2ec1ff); color:white; transform:translateY(-4px); box-shadow:0 6px 20px rgba(46,193,255,0.12);}
+  main{padding:24px; min-height:60vh; display:flex; flex-direction:column; gap:12px;}
+  .empty{height:60vh; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.12); font-weight:600;}
+  .task{
+    display:flex; gap:12px; align-items:center; padding:12px; border-radius:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.02);
+    transition:all .18s;
+  }
+  .task:hover{transform:translateY(-4px); box-shadow:0 12px 40px rgba(2,8,20,0.6);}
+  .icon{
+    width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px;
+    flex-shrink:0;
+  }
+  .task-body{flex:1;}
+  .task-title{font-weight:700; margin-bottom:6px;}
+  .task-meta{font-size:13px; color:var(--muted); display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .progress{
+    display:flex; gap:8px; align-items:center; margin-left:auto;
+  }
+  .btn{background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted); padding:8px 10px; border-radius:10px; cursor:pointer;}
+  .btn.primary{background:linear-gradient(90deg,#7a5bff,#2ec1ff); color:#fff; border:0;}
+  .bottom-nav{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:12px; display:flex; gap:22px; padding:12px 22px;
+    background:rgba(255,255,255,0.02); border-radius:16px; align-items:center; box-shadow:0 8px 30px rgba(2,8,20,0.6);
+  }
+  .bottom-nav a{color:var(--muted); text-decoration:none; display:flex; gap:8px; align-items:center; padding:8px 12px; border-radius:10px;}
+  .bottom-nav a.active{background:linear-gradient(90deg,#7a5bff,#2ec1ff); color:white; transform:translateY(-2px);}
+  .add-fab{
+    position:fixed; right:22px; bottom:82px; width:64px; height:64px; border-radius:999px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    background:linear-gradient(135deg,#8e44ff,#2ec1ff); color:white; font-size:30px; box-shadow:0 12px 40px rgba(46,193,255,0.12);
+  }
+  /* Modal / form */
+  .modal{
+    position:fixed; right:18px; bottom:18px; width:420px; max-height:84vh; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:16px;
+    box-shadow:0 30px 60px rgba(2,8,20,0.7); border:1px solid rgba(255,255,255,0.03); overflow:auto;
+  }
+  .modal.hidden{display:none;}
+  .field{display:flex; flex-direction:column; gap:8px; margin-bottom:12px;}
+  label{font-size:13px;color:var(--muted);}
+  input[type="text"], input[type="number"], select, textarea{
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); padding:10px; border-radius:8px; color:#e6f3ff;
+  }
+  .colors{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+  .color-sq{width:100%; padding-top:70%; border-radius:8px; position:relative; cursor:pointer; border:2px solid rgba(255,255,255,0.03);}
+  .color-sq.selected{box-shadow:0 8px 30px rgba(0,0,0,0.6); transform:scale(1.03); border:2px solid rgba(255,255,255,0.18);}
+  .color-sq span{position:absolute; left:8px; top:8px; font-weight:700;}
+  .icons-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:8px;}
+  .icon-choice{padding:10px; height:46px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.02); cursor:pointer; border:1px solid rgba(255,255,255,0.02);}
+  .icon-choice.selected{outline:3px solid rgba(126,77,255,0.24); transform:translateY(-4px);}
+  .repeat-days{display:flex; gap:6px; flex-wrap:wrap;}
+  .repeat-days button{padding:8px 10px; background:transparent; border:1px solid rgba(255,255,255,0.03); border-radius:8px; color:var(--muted); cursor:pointer;}
+  .repeat-days button.on{background:linear-gradient(90deg,#7a5bff,#2ec1ff); color:white; transform:translateY(-3px);}
+  .footer-actions{display:flex; gap:8px; justify-content:space-between; align-items:center;}
+  .muted-small{font-size:12px;color:var(--muted);}
+  /* Responsiveness */
+  @media (max-width:700px){
+    .modal{left:8px; right:8px; bottom:8px; width:auto; max-height:90vh;}
+    .icons-grid{grid-template-columns:repeat(5,1fr);}
+    .colors{grid-template-columns:repeat(5,1fr);}
+    .day{min-width:52px; font-size:12px;}
+    header{padding:12px;}
+  }
+  /* completed task */
+  .completed{opacity:0.45; filter:grayscale(0.2); background:linear-gradient(180deg, rgba(200,200,200,0.02), rgba(200,200,200,0.01));}
+  /* small helper */
+  .small{font-size:13px;}
+  .danger{color:#ff6b6b}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="date-main">25 listopada 2025</div>
+  <div class="week-nav">
+    <button id="prevWeek" title="Poprzedni tydzień">◀</button>
+    <div style="min-width:520px;"></div>
+    <button id="nextWeek" title="Następny tydzień">▶</button>
+  </div>
+</header>
+
+<section class="week" id="weekHeader" aria-label="Tydzień">
+  <!-- dni pojawią się tutaj dynamicznie -->
+</section>
+
+<main id="contentArea">
+  <div id="tasksContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+  <div id="empty" class="empty">Brak nawyków na wybrany dzień — dodaj nowy klikając <strong>"+"</strong> po prawej.</div>
+</main>
+
+<!-- Add button -->
+<div class="add-fab" id="addBtn" title="Dodaj cel">+</div>
+
+<!-- Modal -->
+<aside class="modal hidden" id="modal">
+  <h3 style="margin:0 0 8px 0;">Dodaj / Edytuj cel</h3>
+  <div class="field">
+    <label>Nazwa</label>
+    <input id="taskName" type="text" placeholder="np. Przeczytać strony" />
+  </div>
+
+  <div class="field">
+    <label>Wybierz kolor</label>
+    <div class="colors" id="colorsGrid"></div>
+  </div>
+
+  <div class="field">
+    <label>Wybierz ikonę</label>
+    <div class="icons-grid" id="iconsGrid"></div>
+  </div>
+
+  <div class="field">
+    <label>Powtarzalność</label>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" data-repeat="once" id="repeatOnce">Tylko dziś</button>
+      <button class="btn" data-repeat="daily" id="repeatDaily">Codziennie</button>
+      <button class="btn" data-repeat="custom" id="repeatCustom">Niestandardowe</button>
+    </div>
+    <div style="margin-top:8px;" id="customDaysWrap" class="hidden">
+      <div class="repeat-days" id="repeatDays"></div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Ilość (cel)</label>
+    <input id="amount" type="number" min="1" value="10" />
+  </div>
+
+  <div class="field">
+    <label>Jednostka</label>
+    <select id="unit">
+      <option>strony</option><option>km</option><option>litry</option><option>godziny</option><option>minuty</option>
+      <option>powtórzenia</option><option>kroki</option><option>dni</option><option>ml</option><option>metr</option>
+      <option>zadania</option><option>serii</option><option>minuty skupienia</option><option>kalorie</option><option>gramy</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Co ile (np. co 1 = liczy każdorazowe zaznaczenie jako 1 jednostka; co 5 = każde zaznaczenie dodaje 5)</label>
+    <input id="interval" type="number" min="1" value="1" />
+  </div>
+
+  <div class="footer-actions" style="margin-top:6px;">
+    <div class="muted-small">Formularz jest przewijalny — przesuwaj aby zobaczyć wszystko.</div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="cancelBtn">Anuluj</button>
+      <button class="btn primary" id="saveBtn">Zapisz</button>
+    </div>
+  </div>
+</aside>
+
+<!-- bottom nav -->
+<nav class="bottom-nav" role="navigation">
+  <a href="index.html"><span>🏠</span><span class="small">Home</span></a>
+  <a href="#" class="active" id="currentPage"><span>📅</span><span class="small">Nawyki</span></a>
+  <a href="ustawienia.html"><span>⚙️</span><span class="small">Ustawienia</span></a>
+</nav>
+
+<!-- hidden templates / dialogs -->
+<div id="dialogs" style="display:none;"></div>
+
+<script>
+/* ---------------------------
+  Dane, kolory, ikony, util
+---------------------------- */
+const COLORS = [
+  '#FF7A7A','#FFB86B','#FFD86B','#D0FF7A','#7AFFA3',
+  '#7AE7FF','#7AB4FF','#7A8CFF','#B77AFF','#FF7AE1',
+  '#C78C74','#8CC7A6','#8CB0FF','#9D9D9D','#F0D9A2'
+];
+
+const ICONS = [
+  '📚','🏃','💧','🧘','🛌','📝','🎧','🚴','🍎','🧹',
+  '💻','💼','📖','🖌️','🎯','🧪','🎵','🎮','✈️','🧩',
+  '🔑','⚽','🪴','☕','📷','🔭','🧰','🧾','🛒','🧸'
+];
+
+const UNITS = ['strony','km','litry','godziny','minuty','powtórzenia','kroki','dni','ml','metr','zadania','serii','minuty skupienia','kalorie','gramy'];
+
+function uid(prefix='id'){return prefix + '_' + Math.random().toString(36).slice(2,9);}
+
+/* ---------------------------
+  Storage
+---------------------------- */
+const STORAGE_KEY = 'nawyk_app_v1';
+let state = {
+  tasks: [], // lista zadań
+  weekStart: new Date('2025-11-24T00:00:00'), // punkt startowy tygodnia (poniedziałek) - domyślnie tydzień zawierający 25.11.2025
+  selectedDate: new Date('2025-11-25T00:00:00')
+};
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    tasks: state.tasks,
+    weekStart: state.weekStart.toISOString(),
+    selectedDate: state.selectedDate.toISOString()
+  }));
+}
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      state.tasks = parsed.tasks || [];
+      state.weekStart = new Date(parsed.weekStart || state.weekStart);
+      state.selectedDate = new Date(parsed.selectedDate || state.selectedDate);
+    }catch(e){ console.warn('błąd odczytu storage',e); }
+  }
+}
+loadState();
+
+/* ---------------------------
+  Week UI
+---------------------------- */
+const weekHeader = document.getElementById('weekHeader');
+const tasksContainer = document.getElementById('tasksContainer');
+const emptyBox = document.getElementById('empty');
+
+function startOfWeek(d){
+  // treat Monday as first day
+  d = new Date(d);
+  const day = d.getDay(); // 0 Sun ... 1 Mon
+  const diff = (day===0? -6 : 1 - day);
+  const res = new Date(d);
+  res.setDate(d.getDate() + diff);
+  res.setHours(0,0,0,0);
+  return res;
+}
+
+function addDays(d, n){ const r=new Date(d); r.setDate(r.getDate()+n); r.setHours(0,0,0,0); return r; }
+
+function formatShortDay(d){
+  const days = ['nd','pon','wt','śr','czw','pt','sob'];
+  return days[d.getDay()]; // careful sunday index
+}
+function formatDateNum(d){ return d.getDate(); }
+
+function renderWeek(){
+  // ensure weekStart is monday
+  state.weekStart = startOfWeek(state.weekStart);
+  weekHeader.innerHTML = '';
+
+  for(let i=0;i<7;i++){
+    const dayDate = addDays(state.weekStart, i);
+    const el = document.createElement('div');
+    el.className = 'day';
+    if(dayDate.toDateString() === state.selectedDate.toDateString()) el.classList.add('active');
+    el.innerHTML = `<div style="font-weight:600">${formatDateNum(dayDate)}</div><div style="font-size:12px;color:var(--muted)">${formatShortDay(dayDate)}</div>`;
+    el.addEventListener('click', ()=> {
+      state.selectedDate = new Date(dayDate);
+      renderWeek(); renderTasks();
+    });
+    weekHeader.appendChild(el);
+  }
+}
+document.getElementById('prevWeek').addEventListener('click', ()=>{
+  state.weekStart.setDate(state.weekStart.getDate()-7);
+  renderWeek();
+  saveState();
+});
+document.getElementById('nextWeek').addEventListener('click', ()=>{
+  state.weekStart.setDate(state.weekStart.getDate()+7);
+  renderWeek();
+  saveState();
+});
+
+/* ---------------------------
+  Tasks rendering & logic
+---------------------------- */
+
+function isTaskActiveOnDate(task, date){
+  // returns if a task occurs on given date
+  const dstr = date.toISOString().slice(0,10);
+  if(task.repeat === 'daily') return true;
+  if(task.repeat === 'once'){
+    return task.startDate === dstr;
+  }
+  if(task.repeat === 'custom'){
+    const weekday = date.getDay(); // 0 Sun ... 1 Mon
+    // map to our representation 1..7 (pn..nd)
+    // our saved days array will be [1..7] where 1=pon
+    const idx = weekday===0 ? 7 : weekday;
+    return task.days && task.days.includes(idx);
+  }
+  return false;
+}
+
+function getProgressForDate(task, date){
+  const dstr = date.toISOString().slice(0,10);
+  return (task.records && task.records[dstr]) || 0;
+}
+
+function markProgress(taskId, date, add){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const dstr = date.toISOString().slice(0,10);
+  task.records = task.records || {};
+  const step = Number(task.interval || 1);
+  const prev = task.records[dstr] || 0;
+  const next = Math.max(0, prev + (add ? step : -step));
+  task.records[dstr] = next;
+  // if reached total, mark completed flag for that date (we use records only; UI shows completed)
+  saveState();
+  renderTasks();
+}
+
+function renderTasks(){
+  tasksContainer.innerHTML = '';
+  const sel = state.selectedDate;
+  const tasksForDay = state.tasks.filter(t => isTaskActiveOnDate(t, sel));
+  if(tasksForDay.length === 0){
+    emptyBox.style.display = 'flex';
+  } else emptyBox.style.display = 'none';
+
+  tasksForDay.forEach(task=>{
+    const prog = getProgressForDate(task, sel);
+    const done = prog >= Number(task.amount);
+    const t = document.createElement('div');
+    t.className = 'task' + (done ? ' completed' : '');
+    t.innerHTML = `
+      <div class="icon" style="background:${COLORS[task.color]};">
+        ${ICONS[task.icon]}
+      </div>
+      <div class="task-body">
+        <div class="task-title">${task.name}</div>
+        <div class="task-meta">
+          <div>${task.amount} ${task.unit} • co ${task.interval}</div>
+          <div>Powtarzanie: ${task.repeat === 'once' ? 'tylko dziś' : (task.repeat === 'daily' ? 'codziennie' : 'niestandardowe')}</div>
+        </div>
+      </div>
+      <div class="progress">
+        <div style="text-align:center;">
+          <div class="small muted-small">${prog}/${task.amount}</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn" data-action="dec" title="cofnij">−</button>
+            <button class="btn primary" data-action="inc">Zaznacz</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column; gap:6px; margin-left:12px;">
+          <button class="btn" data-action="edit">Edytuj</button>
+          <button class="btn danger" data-action="del">Usuń</button>
+        </div>
+      </div>
+    `;
+    // handlers
+    t.querySelectorAll('button').forEach(btn=>{
+      const act = btn.dataset.action;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(act==='inc') markProgress(task.id, sel, true);
+        if(act==='dec') markProgress(task.id, sel, false);
+        if(act==='edit') openModal(task);
+        if(act==='del') confirmDelete(task);
+      });
+    });
+    tasksContainer.appendChild(t);
+  });
+}
+
+/* ---------------------------
+  Add/Edit modal logic
+---------------------------- */
+const addBtn = document.getElementById('addBtn');
+const modal = document.getElementById('modal');
+const cancelBtn = document.getElementById('cancelBtn');
+const saveBtn = document.getElementById('saveBtn');
+const colorsGrid = document.getElementById('colorsGrid');
+const iconsGrid = document.getElementById('iconsGrid');
+const repeatOnce = document.getElementById('repeatOnce');
+const repeatDaily = document.getElementById('repeatDaily');
+const repeatCustom = document.getElementById('repeatCustom');
+const customDaysWrap = document.getElementById('customDaysWrap');
+const repeatDays = document.getElementById('repeatDays');
+
+let editingTask = null;
+let formState = {
+  color: 0, icon: 0, repeat: 'once', days: [], name:'', amount:10, unit:UNITS[0], interval:1
+};
+
+function buildColorGrid(){
+  colorsGrid.innerHTML = '';
+  COLORS.forEach((c, i)=>{
+    const div = document.createElement('div');
+    div.className = 'color-sq' + (formState.color===i ? ' selected' : '');
+    div.style.background = c;
+    div.dataset.idx = i;
+    div.addEventListener('click', ()=> {
+      formState.color = i;
+      document.querySelectorAll('.color-sq').forEach(x=>x.classList.remove('selected'));
+      div.classList.add('selected');
+    });
+    colorsGrid.appendChild(div);
+  });
+}
+
+function buildIconsGrid(){
+  iconsGrid.innerHTML = '';
+  ICONS.forEach((ic,i)=>{
+    const b = document.createElement('div');
+    b.className = 'icon-choice' + (formState.icon===i ? ' selected' : '');
+    b.dataset.idx = i;
+    b.innerHTML = `<div style="font-size:20px">${ic}</div>`;
+    b.addEventListener('click', ()=>{
+      formState.icon = i;
+      document.querySelectorAll('.icon-choice').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+    });
+    iconsGrid.appendChild(b);
+  });
+}
+
+function buildRepeatDays(){
+  repeatDays.innerHTML = '';
+  const labels = ['Pn','Wt','Śr','Cz','Pt','So','Nd'];
+  for(let i=1;i<=7;i++){
+    const btn = document.createElement('button');
+    btn.textContent = labels[i-1];
+    if(formState.days.includes(i)) btn.classList.add('on');
+    btn.addEventListener('click', ()=>{
+      if(formState.days.includes(i)) formState.days = formState.days.filter(x=>x!==i);
+      else formState.days.push(i);
+      btn.classList.toggle('on');
+    });
+    repeatDays.appendChild(btn);
+  }
+}
+
+/* helper show/hide repeat modes */
+function setRepeatMode(mode){
+  formState.repeat = mode;
+  [repeatOnce, repeatDaily, repeatCustom].forEach(b=>b.classList.remove('primary'));
+  if(mode === 'once') repeatOnce.classList.add('primary');
+  if(mode === 'daily') repeatDaily.classList.add('primary');
+  if(mode === 'custom') repeatCustom.classList.add('primary');
+  customDaysWrap.classList.toggle('hidden', mode!=='custom');
+}
+
+/* open modal for new or edit */
+function openModal(task=null){
+  editingTask = task;
+  if(task){
+    formState = {
+      color: task.color,
+      icon: task.icon,
+      repeat: task.repeat,
+      days: task.days ? [...task.days] : [],
+      name: task.name,
+      amount: task.amount,
+      unit: task.unit,
+      interval: task.interval
+    };
+    document.getElementById('taskName').value = formState.name;
+    document.getElementById('amount').value = formState.amount;
+    document.getElementById('unit').value = formState.unit;
+    document.getElementById('interval').value = formState.interval;
+  } else {
+    formState = {color:0,icon:0,repeat:'once',days:[],name:'',amount:10,unit:UNITS[0],interval:1};
+    document.getElementById('taskName').value = '';
+    document.getElementById('amount').value = 10;
+    document.getElementById('unit').value = UNITS[0];
+    document.getElementById('interval').value = 1;
+  }
+  buildColorGrid(); buildIconsGrid(); buildRepeatDays();
+  setRepeatMode(formState.repeat);
+  modal.classList.remove('hidden');
+  modal.scrollTop=0;
+}
+
+addBtn.addEventListener('click', ()=> openModal(null));
+cancelBtn.addEventListener('click', ()=> { modal.classList.add('hidden'); editingTask=null; });
+
+repeatOnce.addEventListener('click', ()=> setRepeatMode('once'));
+repeatDaily.addEventListener('click', ()=> setRepeatMode('daily'));
+repeatCustom.addEventListener('click', ()=> setRepeatMode('custom'));
+
+saveBtn.addEventListener('click', ()=>{
+  const name = document.getElementById('taskName').value.trim();
+  const amount = Number(document.getElementById('amount').value) || 1;
+  const unit = document.getElementById('unit').value;
+  const interval = Number(document.getElementById('interval').value) || 1;
+  if(!name){ alert('Podaj nazwę celu'); return; }
+  if(editingTask){
+    // edit existing
+    editingTask.name = name;
+    editingTask.amount = amount;
+    editingTask.unit = unit;
+    editingTask.interval = interval;
+    editingTask.color = formState.color;
+    editingTask.icon = formState.icon;
+    editingTask.repeat = formState.repeat;
+    editingTask.days = formState.repeat==='custom' ? [...formState.days] : [];
+  } else {
+    const newTask = {
+      id: uid('task'),
+      name, amount, unit, interval,
+      color: formState.color, icon: formState.icon,
+      repeat: formState.repeat,
+      days: formState.repeat==='custom' ? [...formState.days] : [],
+      startDate: state.selectedDate.toISOString().slice(0,10),
+      records: {}
+    };
+    state.tasks.push(newTask);
+  }
+  modal.classList.add('hidden');
+  editingTask=null;
+  saveState();
+  renderTasks();
+});
+
+/* ---------------------------
+  Delete handling
+---------------------------- */
+function confirmDelete(task){
+  // If repeat daily/custom ask whether delete only today or all occurrences
+  if(task.repeat === 'daily' || task.repeat === 'custom'){
+    const r = confirm('Ten nawyk jest powtarzalny. Usunąć tylko dzisiaj (usunąć postęp) czy całkowicie usunąć na zawsze?\n\nOK = Usuń całkowicie\nAnuluj = Usuń tylko dzisiaj (jeśli chcesz anulować całkowite, kliknij Anuluj i wróć).');
+    if(r){
+      // delete completely
+      state.tasks = state.tasks.filter(t=>t.id !== task.id);
+    } else {
+      // only today: remove today's record
+      const dstr = state.selectedDate.toISOString().slice(0,10);
+      if(task.records) delete task.records[dstr];
+    }
+  } else {
+    // not repeating: normal delete confirmation
+    const r = confirm('Czy na pewno usunąć ten nawyk?');
+    if(r) state.tasks = state.tasks.filter(t=>t.id !== task.id);
+  }
+  saveState();
+  renderTasks();
+}
+
+/* ---------------------------
+  Export / Import (sync)
+---------------------------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify({tasks: state.tasks})], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'nawyki-export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importDataFromFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(Array.isArray(parsed.tasks)){
+        state.tasks = parsed.tasks;
+        saveState();
+        renderTasks();
+        alert('Dane zaimportowane pomyślnie.');
+      } else alert('Nieprawidłowy format pliku.');
+    }catch(err){ alert('Błąd parsowania JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* optional: quick UI in settings - we'll add small keyboard shortcuts: 
+   - E to export, I to import
+*/
+document.addEventListener('keydown', (e)=>{
+  if(e.key.toLowerCase()==='e' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); exportData(); }
+});
+
+/* tiny import drop area via double click on bottom nav (convenience) */
+document.getElementById('currentPage').addEventListener('dblclick', ()=>{
+  const input = document.createElement('input'); input.type='file'; input.accept='application/json';
+  input.onchange = ()=> {
+    if(input.files.length) importDataFromFile(input.files[0]);
+  };
+  input.click();
+});
+
+/* ---------------------------
+  init render
+---------------------------- */
+buildColorGrid(); buildIconsGrid(); buildRepeatDays();
+renderWeek();
+renderTasks();
+
+/* ---------------------------
+  Notes for future sync (opcjonalne):
+  Jeśli chcesz zrobic synchronizację między urządzeniami prywatną (np. prywatny Gist na GitHub),
+  można dodać funkcję która wyśle JSON do GitHub Gists (fetch POST/patch) z tokenem osobistym.
+  Z powodów bezpieczeństwa nie dodaję tu automatycznego syncu; zamiast tego:
+  - użyj Export / Import w UI by przenosić dane
+  - albo dodaj własny backend / Gist i wklej token w ustawieniach (funkcję fetch trzeba dodać samemu)
+---------------------------- */
+</script>
+</body>
+</html>
